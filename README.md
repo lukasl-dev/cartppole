@@ -56,8 +56,10 @@ Students working in groups (ideally 3 members) are expected to:
    Proximal Policy Optimization Algorithms. arXiv preprint arXiv:1707.06347.
    <https://arxiv.org/pdf/1707.06347>
 2. Sutton, R. S., & Barto, A. G. (2018). Reinforcement Learning: An
-   Introduction (2nd ed.). <http://incompleteideas.net/book/the-book-2nd.html>
-3. OpenAI Gym / Gymnasium (CartPole environment). <https://www.gymlibrary.dev/>
+   Introduction (2nd ed.).
+   <http://incompleteideas.net/book/the-book-2nd.html>
+3. OpenAI Gym / Gymnasium (CartPole environment).
+   <https://www.gymlibrary.dev/>
 4. OpenAI Spinning Up in Deep RL (PPO reference and explanations).
    <https://spinningup.openai.com/en/latest/algorithms/ppo.htm>
 5. Stable-Baselines3 (reference PPO implementation).
