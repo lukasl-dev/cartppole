@@ -4,10 +4,19 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     utils.url = "github:numtide/flake-utils";
+    pyproject-nix = {
+      url = "github:pyproject-nix/pyproject.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { nixpkgs, utils, ... }:
+    {
+      nixpkgs,
+      utils,
+      pyproject-nix,
+      ...
+    }:
     utils.lib.eachDefaultSystem (
       system:
       let
@@ -16,56 +25,59 @@
           config.allowUnfree = true;
         };
 
-        gymnasium =
-          ps:
-          ps.gymnasium.overridePythonAttrs (_: {
-            # the nixpkgs gymnasium check suite pulls in jax/tensorflow/mujoco/etc.
-            # we only need the cartpole runtime dependencies here.
+        project = pyproject-nix.lib.project.loadUVPyproject {
+          projectRoot = ./.;
+        };
+
+        mkPythonEnv =
+          python:
+          let
+            resolved = project.renderers.withPackages { inherit python; };
+          in
+          python.withPackages (
+            ps:
+            resolved ps
+            ++ (with ps; [
+              ipython
+              pygame
+              ruff
+            ])
+          );
+
+        baseOverrides = _self: super: {
+          gymnasium = super.gymnasium.overridePythonAttrs (_: {
             doCheck = false;
             nativeCheckInputs = [ ];
           });
+        };
 
-        # keep the default direnv shell cpu-only and small-ish. cartpole does
-        # not need cuda, and enabling cuda in nixpkgs can pull a very large
-        # dependency graph that may exhaust ram/disk during `direnv allow`.
-        pythonEnv = pkgs.python312.withPackages (
-          ps: with ps; [
-            torch
-            (gymnasium ps)
-            numpy
-            matplotlib
-            pygame
-            ipython
-            ruff
-          ]
-        );
+        pythonCPU = pkgs.python312.override {
+          packageOverrides = baseOverrides;
+        };
 
-        pythonCudaEnv = pkgs.python312.withPackages (
-          ps: with ps; [
-            torch-bin
-            (gymnasium ps)
-            numpy
-            matplotlib
-            pygame
-            ipython
-            ruff
-          ]
-        );
+        pythonCUDA = pkgs.python312.override {
+          packageOverrides =
+            self: super:
+            (baseOverrides self super)
+            // {
+              torch = pkgs.python312Packages.torch-bin;
+            };
+        };
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = [ pythonEnv ];
+          buildInputs = [ (mkPythonEnv pythonCPU) ];
         };
 
         devShells.cuda = pkgs.mkShell {
-          buildInputs = [ pythonCudaEnv ];
+          buildInputs = [ (mkPythonEnv pythonCUDA) ];
 
           shellHook =
             let
-              libraryPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+              libPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
             in
             ''
-              export LD_LIBRARY_PATH="${libraryPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
+              export LD_LIBRARY_PATH="${libPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
             '';
         };
       }
