@@ -63,10 +63,12 @@
               torch = pkgs.python312Packages.torch-bin;
             };
         };
+
+        packages = with pkgs; [ ty ];
       in
       {
         devShells.default = pkgs.mkShell {
-          buildInputs = [ (mkPythonEnv pythonCPU) ];
+          buildInputs = [ (mkPythonEnv pythonCPU) ] ++ packages;
           shellHook = # bash
             ''
               export PYTHONPATH=src
@@ -74,7 +76,7 @@
         };
 
         devShells.cuda = pkgs.mkShell {
-          buildInputs = [ (mkPythonEnv pythonCUDA) ];
+          buildInputs = [ (mkPythonEnv pythonCUDA) ] ++ packages;
 
           shellHook =
             let

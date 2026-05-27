@@ -1,4 +1,4 @@
-from typing import Final, NamedTuple
+from typing import Final, NamedTuple, cast
 
 import gymnasium as gym
 import numpy as np
@@ -50,16 +50,16 @@ class Environment:
     @property
     def observation_space(self) -> gym.spaces.Box:
         if self.n_envs > 1:
-            return self._vec.single_observation_space  # type: ignore[return-value]
+            return cast(gym.spaces.Box, self._vec.single_observation_space)
         else:
-            return self._scalar.observation_space  # type: ignore[return-value]
+            return cast(gym.spaces.Box, self._scalar.observation_space)
 
     @property
     def action_space(self) -> gym.spaces.Discrete:
         if self.n_envs > 1:
-            return self._vec.single_action_space  # type: ignore[return-value]
+            return cast(gym.spaces.Discrete, self._vec.single_action_space)
         else:
-            return self._scalar.action_space  # type: ignore[return-value]
+            return cast(gym.spaces.Discrete, self._scalar.action_space)
 
     def reset(self, seed: int | None = None) -> Reset:
         if self.n_envs > 1:
