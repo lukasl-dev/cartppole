@@ -34,6 +34,7 @@
             (gymnasium ps)
             numpy
             matplotlib
+            pygame
             ipython
             ruff
           ]
@@ -45,6 +46,7 @@
             (gymnasium ps)
             numpy
             matplotlib
+            pygame
             ipython
             ruff
           ]

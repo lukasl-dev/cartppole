@@ -8,6 +8,7 @@ dependencies = [
   "gymnasium",
   "matplotlib",
   "numpy",
+  "pygame",
   "torch",
 ]
 
