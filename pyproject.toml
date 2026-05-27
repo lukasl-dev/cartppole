@@ -1,7 +1,19 @@
 [project]
 name = "cartppole"
 version = "0.1.0"
-description = "Add your description here"
+description = "PPO implementation for CartPole"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+  "gymnasium",
+  "matplotlib",
+  "numpy",
+  "torch",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = "src"
