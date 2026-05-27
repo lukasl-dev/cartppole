@@ -76,6 +76,7 @@
             let
               libPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
             in
+            # bash
             ''
               export LD_LIBRARY_PATH="${libPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
             '';
