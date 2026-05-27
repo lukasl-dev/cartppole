@@ -67,6 +67,10 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = [ (mkPythonEnv pythonCPU) ];
+          shellHook = # bash
+            ''
+              export PYTHONPATH=src
+            '';
         };
 
         devShells.cuda = pkgs.mkShell {
@@ -79,6 +83,7 @@
             # bash
             ''
               export LD_LIBRARY_PATH="${libPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
+              export PYTHONPATH=src
             '';
         };
       }
