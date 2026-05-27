@@ -72,7 +72,7 @@ class Environment:
                 info=info,
             )
 
-    def step(self, actions: npt.NDArray[np.int64]) -> Step:
+    def step(self, actions: Shaped[npt.NDArray[np.int64], "n_envs"]) -> Step:
         if self.n_envs > 1:
             obs, reward, terminated, truncated, info = self._vec.step(actions)
             return Step(
