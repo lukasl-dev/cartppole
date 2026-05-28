@@ -15,7 +15,11 @@ jobs:
 
       - uses: DeterminateSystems/nix-installer-action@main
 
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: "https://cache.lukasl.dev/"
+          cache: cartppole
+          token: "${{ secrets.CACHE_SECRET }}"
 
       - name: ty
         run: nix develop . --command ty check
