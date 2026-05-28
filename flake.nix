@@ -44,7 +44,14 @@
             ])
           );
 
-        baseOverrides = _self: super: {
+        baseOverrides = self: super: {
+          aim-ui = self.callPackage ./nix/packages/aim-ui.nix { };
+          aimrecords = self.callPackage ./nix/packages/aimrecords.nix { };
+          aimrocks = self.callPackage ./nix/packages/aimrocks.nix {
+            inherit (pkgs) autoPatchelfHook stdenv zlib;
+          };
+          aim = self.callPackage ./nix/packages/aim.nix { aimUi = self.aim-ui; };
+
           gymnasium = super.gymnasium.overridePythonAttrs (_: {
             doCheck = false;
             nativeCheckInputs = [ ];
