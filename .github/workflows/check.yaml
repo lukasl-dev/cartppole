@@ -22,4 +22,4 @@ jobs:
           token: "${{ secrets.CACHE_SECRET }}"
 
       - name: ty
-        run: nix develop . --command ty check
+        run: nix run .#check

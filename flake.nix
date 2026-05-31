@@ -71,29 +71,63 @@
             };
         };
 
-        packages = with pkgs; [ ty ];
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = [ (mkPythonEnv pythonCPU) ] ++ packages;
-          shellHook = # bash
+        pythonEnv = mkPythonEnv pythonCPU;
+
+        check = pkgs.writeShellApplication {
+          name = "check";
+          runtimeInputs = [
+            pythonEnv
+            pkgs.ty
+          ];
+          text = # bash
             ''
               export PYTHONPATH=src
+              exec ty check "$@"
             '';
         };
 
-        devShells.cuda = pkgs.mkShell {
-          buildInputs = [ (mkPythonEnv pythonCUDA) ] ++ packages;
+        packages = with pkgs; [
+          ty
+          texliveFull
+          graphviz
 
-          shellHook =
-            let
-              libPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-            in
-            # bash
-            ''
-              export LD_LIBRARY_PATH="${libPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
-              export PYTHONPATH=src
-            '';
+          check
+        ];
+
+        shellHook = # bash
+          ''
+            export PYTHONPATH=src
+            export SOURCE_DATE_EPOCH=$(date +%s)
+          '';
+      in
+      {
+        apps = {
+          check = {
+            type = "app";
+            program = "${check}/bin/check";
+            meta.description = "Run ty check with the Python environment";
+          };
+        };
+
+        devShells = {
+          default = pkgs.mkShell {
+            buildInputs = [ pythonEnv ] ++ packages;
+            inherit shellHook;
+          };
+
+          cuda = pkgs.mkShell {
+            buildInputs = [ (mkPythonEnv pythonCUDA) ] ++ packages;
+
+            shellHook =
+              let
+                libPath = pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+              in
+              # bash
+              ''
+                export LD_LIBRARY_PATH="${libPath}:/run/opengl-driver/lib:/run/opengl-driver-32/lib:$LD_LIBRARY_PATH"
+                ${shellHook} 
+              '';
+          };
         };
       }
     );
