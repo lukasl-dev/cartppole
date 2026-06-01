@@ -1,0 +1,56 @@
+\documentclass[10pt]{article}
+
+\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref}
+
+\setlength{\parskip}{0.25em}
+\setlength{\parindent}{0pt}
+\setlist[itemize]{leftmargin=*,topsep=2pt,itemsep=1pt}
+\setlist[enumerate]{leftmargin=*,topsep=2pt,itemsep=1pt}
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\clip}{\operatorname{clip}}
+
+\title{\vspace{-1.4em}\bfseries cartPPOle: \\ Proximal Policy Optimisation for CartPole-v1}
+\author{
+  Lukas Leeb \\
+  \texttt{e12421919@student.tuwien.ac.at}
+  \and
+  Michael Gail \\
+  \texttt{e12317237@student.tuwien.ac.at}
+}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\begin{abstract}
+\end{abstract}
+
+\input{sections/intro}
+\input{sections/background}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\appendix
+\input{sections/appendix}
+
+\nocite{*}
+\bibliographystyle{plainnat}
+\bibliography{sections/references}
+
+\end{document}
