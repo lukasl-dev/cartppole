@@ -109,6 +109,36 @@
           };
         };
 
+        packages = {
+          report = pkgs.stdenvNoCC.mkDerivation {
+            pname = "cartppole-report";
+            version = "master";
+            src = ./report;
+
+            nativeBuildInputs = [ pkgs.texliveFull ];
+
+            buildPhase = # bash
+              ''
+                runHook preBuild
+
+                export HOME="$TMPDIR"
+                latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+
+                runHook postBuild
+              '';
+
+            installPhase = # bash
+              ''
+                runHook preInstall
+
+                mkdir -p "$out"
+                cp main.pdf "$out/report.pdf"
+
+                runHook postInstall
+              '';
+          };
+        };
+
         devShells = {
           default = pkgs.mkShell {
             buildInputs = [ pythonEnv ] ++ packages;
