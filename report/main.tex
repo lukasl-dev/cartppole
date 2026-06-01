@@ -1,11 +1,11 @@
-\documentclass[10pt]{article}
+\documentclass[11pt]{article}
 
-\usepackage[a4paper,margin=0.9in]{geometry}
+\usepackage[letterpaper,top=0.75in,bottom=0.9in,left=1.25in,right=1.25in]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{lmodern}
-\usepackage{microtype}
 \usepackage{amsmath,amssymb,mathtools}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{xcolor}
@@ -14,27 +14,49 @@
 \usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
 \usepackage[capitalize,noabbrev]{cleveref}
 
-\setlength{\parskip}{0.25em}
 \setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
 \setlist[itemize]{leftmargin=*,topsep=2pt,itemsep=1pt}
 \setlist[enumerate]{leftmargin=*,topsep=2pt,itemsep=1pt}
 
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\clip}{\operatorname{clip}}
 
-\title{\vspace{-1.4em}\bfseries cartPPOle: \\ Proximal Policy Optimisation for CartPole-v1}
-\author{
-  Lukas Leeb \\
-  \texttt{e12421919@student.tuwien.ac.at}
-  \and
-  Michael Gail \\
-  \texttt{e12317237@student.tuwien.ac.at}
+\newcommand{\papertitle}{cartPPOle: Proximal Policy Optimization for CartPole-v1}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \begingroup
+  \thispagestyle{empty}%
+  \vspace*{-0.15in}%
+  \noindent\rule{\textwidth}{5pt}\par
+  \vspace{1.0em}%
+  {\LARGE\bfseries \papertitle\par}%
+  \vspace{1.0em}%
+  \noindent\rule{\textwidth}{0.6pt}\par
+  \vspace{2.2em}%
+  \begin{center}
+    \begin{tabular}{cc}
+      \textbf{Lukas Leeb} & \textbf{Michael Gail} \\
+      Technical University of Vienna & Technical University of Vienna \\
+      \texttt{e12421919@student.tuwien.ac.at} & \texttt{e12317237@student.tuwien.ac.at}
+    \end{tabular}
+  \end{center}
+  \vspace{1.2em}%
+  \endgroup
 }
-\date{}
+\makeatother
+
+\renewenvironment{abstract}{%
+  \begin{center}\bfseries Abstract\end{center}
+  \begin{quote}\small
+}{%
+  \end{quote}
+  \vspace{1.2em}
+}
 
 \begin{document}
 \maketitle
-\vspace{-1.2em}
 
 \begin{abstract}
 \end{abstract}
