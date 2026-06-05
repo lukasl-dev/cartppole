@@ -1,32 +1,35 @@
-from typing import Final, NamedTuple, cast
+from enum import StrEnum
+from typing import Annotated, Final, NamedTuple, cast
 
 import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 
-from cartppole.typing import Shaped
 
-# https://gymnasium.farama.org/environments/classic_control/cart_pole/
-#
-# cartpole has
-# - 4 observation dims, and
-# - 2 discrete actions
-ENVIRONMENT_ID: Final[str] = "CartPole-v1"
-OBS_DIM: Final[int] = 4
-ACT_DIM: Final[int] = 2
+class EnvironmentID(StrEnum):
+    # https://gymnasium.farama.org/environments/classic_control/cart_pole/
+    #
+    # cartpole has
+    # - 4 observation dims, and
+    # - 2 discrete actions
+    CartPoleV1 = "CartPole-v1"
 
 
 class Reset(NamedTuple):
-    obs: Shaped[npt.NDArray[np.float32], "n_envs 4"]
+    obs: Annotated[npt.NDArray[np.float32], "n_envs obs_dim"]
     info: dict
 
 
 class Step(NamedTuple):
-    obs: Shaped[npt.NDArray[np.float32], "n_envs 4"]
-    reward: Shaped[npt.NDArray[np.float32], "n_envs"]
-    terminated: Shaped[npt.NDArray[np.bool], "n_envs"]
-    truncated: Shaped[npt.NDArray[np.bool], "n_envs"]
+    obs: Annotated[npt.NDArray[np.float32], "n_envs obs_dim"]
+    reward: Annotated[npt.NDArray[np.float32], "n_envs"]
+    terminated: Annotated[npt.NDArray[np.bool_], "n_envs"]
+    truncated: Annotated[npt.NDArray[np.bool_], "n_envs"]
     info: dict
+
+    @property
+    def done(self) -> Annotated[npt.NDArray[np.bool_], "n_envs"]:
+        return self.terminated | self.truncated
 
 
 class Environment:
@@ -35,15 +38,20 @@ class Environment:
     _vec: gym.vector.VectorEnv
     _scalar: gym.Env
 
-    def __init__(self, n_envs: int = 1, render: bool = False) -> None:
+    def __init__(
+        self,
+        id: EnvironmentID = EnvironmentID.CartPoleV1,
+        n_envs: int = 1,
+        render: bool = False,
+    ) -> None:
         self.n_envs = n_envs
         self.render = render
         if n_envs > 1:
             assert not render, "rendering only supported for n_envs=1"
-            self._vec = gym.make_vec(id=ENVIRONMENT_ID, num_envs=n_envs)
+            self._vec = gym.make_vec(id=id, num_envs=n_envs)
         else:
             self._scalar = gym.make(
-                id=ENVIRONMENT_ID,
+                id=id,
                 render_mode="human" if render else None,
             )
 
@@ -61,6 +69,14 @@ class Environment:
         else:
             return cast(gym.spaces.Discrete, self._scalar.action_space)
 
+    @property
+    def obs_dim(self) -> int:
+        return int(self.observation_space.shape[0])
+
+    @property
+    def act_dim(self) -> int:
+        return int(self.action_space.n)
+
     def reset(self, seed: int | None = None) -> Reset:
         if self.n_envs > 1:
             obs, info = self._vec.reset(seed=seed)
@@ -72,7 +88,7 @@ class Environment:
                 info=info,
             )
 
-    def step(self, actions: Shaped[npt.NDArray[np.int64], "n_envs"]) -> Step:
+    def step(self, actions: Annotated[npt.NDArray[np.int64], "n_envs"]) -> Step:
         if self.n_envs > 1:
             obs, reward, terminated, truncated, info = self._vec.step(actions)
             return Step(
@@ -90,8 +106,8 @@ class Environment:
             return Step(
                 obs=np.expand_dims(obs, axis=0).astype(np.float32),
                 reward=np.array([reward], dtype=np.float32),
-                terminated=np.array([terminated], dtype=np.bool_),
-                truncated=np.array([truncated], dtype=np.bool_),
+                terminated=np.array([terminated], dtype=np.bool),
+                truncated=np.array([truncated], dtype=np.bool),
                 info=info,
             )
 
