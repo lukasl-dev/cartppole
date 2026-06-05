@@ -76,7 +76,15 @@
             self: super:
             (baseOverrides self super)
             // {
-              torch = pkgs.python312Packages.torch-bin;
+              torch = pkgs.python312Packages.torch-bin.overridePythonAttrs (old: {
+                buildInputs = map (
+                  input:
+                  if (input.pname or null) == "libnvshmem" then
+                    (pkgs.callPackage ./nix/packages/nvidia-nvshmem-cu12.nix { })
+                  else
+                    input
+                ) old.buildInputs;
+              });
             };
         };
 
