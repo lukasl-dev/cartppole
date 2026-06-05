@@ -82,7 +82,7 @@
           text = # bash
             ''
               export PYTHONPATH=src
-              exec ty check "$@"
+              exec ty check --python ${pythonEnv}/bin/python "$@"
             '';
         };
 
