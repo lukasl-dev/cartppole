@@ -1,15 +1,15 @@
 from typing import Annotated, NamedTuple
 
-import torch
+from torch import Tensor
 from torch.distributions import Categorical
 from torch.nn import Linear, Module, Sequential, Tanh
 
 
 class PolicyOutput(NamedTuple):
-    action: Annotated[torch.Tensor, "batch_size"]
-    log_prob: Annotated[torch.Tensor, "batch_size"]
-    entropy: Annotated[torch.Tensor, "batch_size"]
-    value: Annotated[torch.Tensor, "batch_size"]
+    action: Annotated[Tensor, "batch_size"]
+    log_prob: Annotated[Tensor, "batch_size"]
+    entropy: Annotated[Tensor, "batch_size"]
+    value: Annotated[Tensor, "batch_size"]
 
 
 class Policy(Module):
@@ -48,8 +48,8 @@ class Policy(Module):
 
     def get_value(
         self,
-        obs: Annotated[torch.Tensor, "batch_size obs_dim"],
-    ) -> Annotated[torch.Tensor, "batch_size"]:
+        obs: Annotated[Tensor, "batch_size obs_dim"],
+    ) -> Annotated[Tensor, "batch_size"]:
         """Estimate the value of each observation.
 
         Args:
@@ -62,8 +62,8 @@ class Policy(Module):
 
     def get_action_and_value(
         self,
-        obs: Annotated[torch.Tensor, "batch_size obs_dim"],
-        action: Annotated[torch.Tensor, "batch_size"] | None = None,
+        obs: Annotated[Tensor, "batch_size obs_dim"],
+        action: Annotated[Tensor, "batch_size"] | None = None,
     ) -> PolicyOutput:
         """Sample or evaluate actions and compute critic values.
 
@@ -83,7 +83,7 @@ class Policy(Module):
             The action, its log-probability, the distribution entropy, and the
             critic value estimate.
         """
-        logits: Annotated[torch.Tensor, "batch_size act_dim"] = self._actor(obs)
+        logits: Annotated[Tensor, "batch_size act_dim"] = self._actor(obs)
         dist = Categorical(logits=logits)
 
         if action is None:
