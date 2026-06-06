@@ -264,10 +264,15 @@ def train(
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
     mc_discount_factor: float = 0.99,
 ) -> None:
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    params = locals().copy()
 
     run = Run()
+    run.add_tag(env_id)
+    for k, v in params.items():
+        run[k] = str(v) if isinstance(v, Path) else v
+
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     env = Environment(id=env_id, n_envs=n_envs, render=render)
     policy = Policy(
@@ -284,7 +289,9 @@ def train(
 
     for update in range(n_updates):
         if update % (n_updates // 20) == 0 or update == n_updates - 1:
-            click.echo(f"\rRunning update {update + 1}/{n_updates}", nl=update == n_updates - 1)
+            click.echo(
+                f"\rRunning update {update + 1}/{n_updates}", nl=update == n_updates - 1
+            )
 
         roll: Rollout = rollout(
             seed=seed + update,
@@ -321,8 +328,12 @@ def train(
         )
 
         if episode_returns:
-            run.track(float(np.mean(episode_returns)), name="episode/return_mean", step=update)
-            run.track(float(np.mean(episode_lengths)), name="episode/length_mean", step=update)
+            run.track(
+                float(np.mean(episode_returns)), name="episode/return_mean", step=update
+            )
+            run.track(
+                float(np.mean(episode_lengths)), name="episode/length_mean", step=update
+            )
             success_rate = np.mean([r >= 475 for r in episode_returns])
             run.track(float(success_rate), name="episode/success_rate", step=update)
 
@@ -335,7 +346,9 @@ def train(
         for epoch in range(update_epochs):
             batch_perm = torch.randperm(batch_size)
             for mini_batch_start in range(0, batch_size, mini_batch_size):
-                mini_batch = batch_perm[mini_batch_start:mini_batch_start + mini_batch_size] 
+                mini_batch = batch_perm[
+                    mini_batch_start : mini_batch_start + mini_batch_size
+                ]
                 mini_batch_act = batch_act[mini_batch]
                 mini_batch_obs = batch_obs[mini_batch]
                 mini_batch_log_prob = batch_log_prob[mini_batch]
@@ -360,7 +373,9 @@ def train(
                 optim.step()
 
                 mini_batch_idx = mini_batch_start // mini_batch_size
-                update_step = (update * update_epochs + epoch) * n_minibatches + mini_batch_idx
+                update_step = (
+                    update * update_epochs + epoch
+                ) * n_minibatches + mini_batch_idx
 
                 run.track(float(loss.detach()), name="loss", step=update_step)
                 run.track(
