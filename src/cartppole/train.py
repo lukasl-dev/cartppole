@@ -86,6 +86,31 @@ def rollout(
     )
 
 
+def collect_completed_episodes(
+    roll: Rollout,
+    current_ep_return: Annotated[Tensor, "n_envs"],
+    current_ep_length: Annotated[Tensor, "n_envs"],
+) -> tuple[list[float], list[int]]:
+    n_steps = roll.rew.shape[0]
+    episode_returns: list[float] = []
+    episode_lengths: list[int] = []
+
+    for step in range(n_steps):
+        current_ep_return += roll.rew[step]
+        current_ep_length += 1
+
+        ended = roll.done[step + 1] if step < n_steps - 1 else roll.next_done
+
+        for env_idx in range(len(current_ep_return)):
+            if ended[env_idx]:
+                episode_returns.append(float(current_ep_return[env_idx]))
+                episode_lengths.append(int(current_ep_length[env_idx]))
+                current_ep_return[env_idx] = 0
+                current_ep_length[env_idx] = 0
+
+    return episode_returns, episode_lengths
+
+
 def normalise_advantages(
     adv: Annotated[Tensor, "batch_size"],
 ) -> Annotated[Tensor, "batch_size"]:
@@ -245,6 +270,9 @@ def train(
 
     n_updates = total_timesteps // (n_steps * n_envs)
 
+    current_ep_return = zeros(n_envs)
+    current_ep_length = zeros(n_envs, dtype=torch.long)
+
     for update in range(n_updates):
         roll: Rollout = rollout(
             seed=seed + update,
@@ -273,6 +301,18 @@ def train(
 
         batch_size = batch_act.shape[0]
         n_minibatches = batch_size // mini_batch_size
+
+        episode_returns, episode_lengths = collect_completed_episodes(
+            roll=roll,
+            current_ep_return=current_ep_return,
+            current_ep_length=current_ep_length,
+        )
+
+        if episode_returns:
+            run.track(float(np.mean(episode_returns)), name="episode/return_mean", step=update)
+            run.track(float(np.mean(episode_lengths)), name="episode/length_mean", step=update)
+            success_rate = np.mean([r >= 475 for r in episode_returns])
+            run.track(float(success_rate), name="episode/success_rate", step=update)
 
         run.track(float(roll.rew.mean()), name="rollout/reward_mean", step=update)
         run.track(float(roll.rew.sum()), name="rollout/reward_sum", step=update)

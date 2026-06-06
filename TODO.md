@@ -3,8 +3,8 @@
 - [ ] Training
     - [X] Mini-batch updates
     - [ ] Keep rollout state across updates instead of resetting every rollout
-    - [ ] Log episode return and episode length during training
-    - [ ] Track success rate, e.g. return >= 475
+    - [X] Log episode return and episode length during training
+    - [X] Track success rate, e.g. return >= 475
 - [ ] GAE
 - [ ] Evaluation
     - [ ] Add evaluation script that loads a checkpoint
