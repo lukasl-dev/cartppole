@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      report: ${{ steps.filter.outputs.report }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            report:
+              - 'report/**'
+
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: "https://cache.lukasl.dev/"
+          cache: cartppole
+          token: "${{ secrets.CACHE_SECRET }}"
+
+      - name: Check 
+        run: nix run .#check
+
+  report:
+    needs: changes
+    if: ${{ needs.changes.outputs.report == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: "https://cache.lukasl.dev/"
+          cache: cartppole
+          token: "${{ secrets.CACHE_SECRET }}"
+
+      - name: Build report
+        run: nix build .#report
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: report
+          path: result/report.pdf
