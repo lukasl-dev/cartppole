@@ -51,7 +51,7 @@ jobs:
           token: "${{ secrets.CACHE_SECRET }}"
 
       - name: Check 
-        run: nix run .#check
+        run: nix run .#check --accept-flake-config
 
   report:
     needs: changes
@@ -72,7 +72,7 @@ jobs:
           token: "${{ secrets.CACHE_SECRET }}"
 
       - name: Build report
-        run: nix build .#report
+        run: nix build .#report --accept-flake-config
 
       - uses: actions/upload-artifact@v5
         with:
