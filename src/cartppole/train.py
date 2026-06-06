@@ -274,6 +274,9 @@ def train(
     current_ep_length = zeros(n_envs, dtype=torch.long)
 
     for update in range(n_updates):
+        if update % (n_updates // 20) == 0 or update == n_updates - 1:
+            click.echo(f"\rRunning update {update + 1}/{n_updates}", nl=update == n_updates - 1)
+
         roll: Rollout = rollout(
             seed=seed + update,
             n_steps=n_steps,
