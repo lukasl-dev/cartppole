@@ -7,12 +7,9 @@ import numpy.typing as npt
 
 
 class EnvironmentID(StrEnum):
-    # https://gymnasium.farama.org/environments/classic_control/cart_pole/
-    #
-    # cartpole has
-    # - 4 observation dims, and
-    # - 2 discrete actions
     CartPoleV1 = "CartPole-v1"
+    AcrobotV1 = "Acrobot-v1"
+    MountainCarV0 = "MountainCar-v0"
 
 
 class Reset(NamedTuple):
