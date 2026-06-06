@@ -283,12 +283,13 @@ def train(
     optim = Adam(policy.parameters(), lr=learning_rate)
 
     n_updates = total_timesteps // (n_steps * n_envs)
+    progress_interval = max(1, n_updates // 20)
 
     current_ep_return = zeros(n_envs)
     current_ep_length = zeros(n_envs, dtype=torch.long)
 
     for update in range(n_updates):
-        if update % (n_updates // 20) == 0 or update == n_updates - 1:
+        if update % progress_interval == 0 or update == n_updates - 1:
             click.echo(
                 f"\rRunning update {update + 1}/{n_updates}", nl=update == n_updates - 1
             )
