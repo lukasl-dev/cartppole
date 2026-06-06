@@ -214,6 +214,14 @@ def ppo_loss(
 
 
 @click.command()
+@click.option(
+    "--env",
+    "env_id",
+    default="CartPole-v1",
+    show_default=True,
+    type=str,
+    help="Gymnasium environment ID.",
+)
 @click.option("--seed", default=0, show_default=True, type=int)
 @click.option("--n-envs", default=8, show_default=True, type=int)
 @click.option("--render", is_flag=True, help="Render the environment.")
@@ -240,6 +248,7 @@ def ppo_loss(
     type=float,
 )
 def train(
+    env_id: str = "CartPole-v1",
     seed: int = 0,
     n_envs: int = 8,
     render: bool = False,
@@ -260,7 +269,7 @@ def train(
 
     run = Run()
 
-    env = Environment(n_envs=n_envs, render=render)
+    env = Environment(id=env_id, n_envs=n_envs, render=render)
     policy = Policy(
         obs_dim=env.obs_dim,
         act_dim=env.act_dim,

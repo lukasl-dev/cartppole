@@ -10,16 +10,24 @@ from cartppole.policy import Policy
 
 @click.command()
 @click.option(
+    "--env",
+    "env_id",
+    default="CartPole-v1",
+    show_default=True,
+    type=str,
+    help="Gymnasium environment ID.",
+)
+@click.option(
     "--checkpoint-path",
     default="checkpoints/policy.pt",
     show_default=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
 )
 @click.option("--seed", default=0, show_default=True, type=int)
-def play(checkpoint_path: Path, seed: int = 0) -> None:
+def play(checkpoint_path: Path, env_id: str = "CartPole-v1", seed: int = 0) -> None:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
-    env = Environment(n_envs=1, render=True)
+    env = Environment(id=env_id, n_envs=1, render=True)
     policy = Policy(
         obs_dim=checkpoint["obs_dim"],
         act_dim=checkpoint["act_dim"],

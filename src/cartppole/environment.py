@@ -37,7 +37,7 @@ class Environment:
 
     def __init__(
         self,
-        id: EnvironmentID = EnvironmentID.CartPoleV1,
+        id: str | EnvironmentID = EnvironmentID.CartPoleV1,
         n_envs: int = 1,
         render: bool = False,
     ) -> None:
