@@ -9,7 +9,7 @@ class PolicyOutput(NamedTuple):
     action: Annotated[Tensor, "batch_size"]
     log_prob: Annotated[Tensor, "batch_size"]
     entropy: Annotated[Tensor, "batch_size"]
-    value: Annotated[Tensor, "batch_size"]
+    val: Annotated[Tensor, "batch_size"]
 
 
 class Policy(Module):
@@ -97,5 +97,5 @@ class Policy(Module):
             action=action,
             log_prob=log_prob,
             entropy=entropy,
-            value=value,
+            val=value,
         )

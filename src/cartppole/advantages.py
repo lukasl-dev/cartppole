@@ -4,15 +4,15 @@ from torch import Tensor, zeros_like
 
 
 class Advantage(NamedTuple):
-    returns: Annotated[Tensor, "n_steps n_envs"]
-    advantages: Annotated[Tensor, "n_steps n_envs"]
+    ret: Annotated[Tensor, "n_steps n_envs"]
+    adv: Annotated[Tensor, "n_steps n_envs"]
 
 
 def monte_carlo(
-    rewards: Annotated[Tensor, "n_steps n_envs"],
+    rew: Annotated[Tensor, "n_steps n_envs"],
     dones: Annotated[Tensor, "n_steps n_envs"],
-    values: Annotated[Tensor, "n_steps n_envs"],
-    next_value: Annotated[Tensor, "n_envs"],
+    val: Annotated[Tensor, "n_steps n_envs"],
+    next_val: Annotated[Tensor, "n_envs"],
     next_done: Annotated[Tensor, "n_envs"],
     discount_factor: float,
 ) -> Advantage:
@@ -51,17 +51,17 @@ def monte_carlo(
     Returns:
         Discounted returns and advantages.
     """
-    returns: Annotated[Tensor, "n_steps n_envs"] = zeros_like(rewards)
+    returns: Annotated[Tensor, "n_steps n_envs"] = zeros_like(rew)
 
-    for step in reversed(range(rewards.shape[0])):
-        if step == rewards.shape[0] - 1:
+    for step in reversed(range(rew.shape[0])):
+        if step == rew.shape[0] - 1:
             next_nonterminal = 1.0 - next_done
-            next_return = next_value
+            next_return = next_val
         else:
             next_nonterminal = 1.0 - dones[step + 1]
             next_return = returns[step + 1]
 
-        returns[step] = rewards[step] + discount_factor * next_nonterminal * next_return
+        returns[step] = rew[step] + discount_factor * next_nonterminal * next_return
 
-    advantages: Annotated[Tensor, "n_steps n_envs"] = returns - values
-    return Advantage(returns=returns, advantages=advantages)
+    advantages: Annotated[Tensor, "n_steps n_envs"] = returns - val
+    return Advantage(ret=returns, adv=advantages)

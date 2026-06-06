@@ -1,0 +1,24 @@
+# To Do
+
+- [ ] Training
+    - [ ] Mini-batch updates
+    - [ ] Keep rollout state across updates instead of resetting every rollout
+    - [ ] Log episode return and episode length during training
+    - [ ] Track success rate, e.g. return >= 475
+- [ ] GAE
+- [ ] Evaluation
+    - [ ] Add evaluation script that loads a checkpoint
+    - [ ] Run deterministic/eval episodes without exploration
+    - [ ] Report average return and success rate
+- [ ] Plotting
+    - [ ] Plot episode return over training
+    - [ ] Plot mean ± std across seeds
+- [ ] Ablation studies
+    - [ ] clip ranges
+    - [ ] GAE lambdas
+- [ ] Sensitivity to seeds
+    - [ ] Train with multiple seeds
+    - [ ] Report mean ± std
+- [ ] Report / presentation
+    - [ ] Describe PPO objective and implementation choices
+    - [ ] Include training curves and evaluation table

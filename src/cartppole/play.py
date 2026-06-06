@@ -1,0 +1,52 @@
+from pathlib import Path
+
+import click
+import torch
+from torch import no_grad, tensor
+
+from cartppole.environment import Environment
+from cartppole.policy import Policy
+
+
+@click.command()
+@click.option(
+    "--checkpoint-path",
+    default="checkpoints/policy.pt",
+    show_default=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option("--seed", default=0, show_default=True, type=int)
+def play(checkpoint_path: Path, seed: int = 0) -> None:
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+
+    env = Environment(n_envs=1, render=True)
+    policy = Policy(
+        obs_dim=checkpoint["obs_dim"],
+        act_dim=checkpoint["act_dim"],
+        hidden_dim=checkpoint["hidden_dim"],
+    )
+    policy.load_state_dict(checkpoint["policy"])
+    policy.eval()
+
+    reset = env.reset(seed=seed)
+    obs = tensor(reset.obs, dtype=torch.float32)
+    total_reward = 0.0
+
+    try:
+        while True:
+            with no_grad():
+                out = policy.get_action_and_value(obs)
+
+            step = env.step(out.action.numpy())
+            total_reward += float(step.reward[0])
+            obs = tensor(step.obs, dtype=torch.float32)
+
+            if bool(step.done[0]):
+                click.echo(f"episode return: {total_reward}")
+                break
+    finally:
+        env.close()
+
+
+if __name__ == "__main__":
+    play()
