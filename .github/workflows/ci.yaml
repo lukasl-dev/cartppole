@@ -11,6 +11,7 @@ jobs:
       contents: read
     outputs:
       report: ${{ steps.filter.outputs.report }}
+      check: ${{ steps.filter.outputs.check }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -19,8 +20,21 @@ jobs:
           filters: |
             report:
               - 'report/**'
+              - 'flake.nix'
+              - 'flake.lock'
+              - '.github/workflows/ci.yaml'
+            check:
+              - 'src/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - 'flake.nix'
+              - 'flake.lock'
+              - 'nix/packages/**'
+              - '.github/workflows/ci.yaml'
 
   check:
+    needs: changes
+    if: ${{ needs.changes.outputs.check == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: "write"
