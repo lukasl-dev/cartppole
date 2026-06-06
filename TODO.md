@@ -1,7 +1,7 @@
 # To Do
 
 - [ ] Training
-    - [ ] Mini-batch updates
+    - [X] Mini-batch updates
     - [ ] Keep rollout state across updates instead of resetting every rollout
     - [ ] Log episode return and episode length during training
     - [ ] Track success rate, e.g. return >= 475

@@ -195,6 +195,7 @@ def ppo_loss(
 @click.option("--hidden-dim", default=64, show_default=True, type=int)
 @click.option("--learning-rate", default=2.5e-4, show_default=True, type=float)
 @click.option("--n-steps", default=128, show_default=True, type=int)
+@click.option("--mini-batch-size", default=256, show_default=True, type=int)
 @click.option("--clip-coef", default=0.2, show_default=True, type=float)
 @click.option("--value-coef", default=0.5, show_default=True, type=float)
 @click.option("--entropy-coef", default=0.01, show_default=True, type=float)
@@ -220,6 +221,7 @@ def train(
     hidden_dim: int = 64,
     learning_rate: float = 2.5e-4,
     n_steps: int = 128,
+    mini_batch_size: int = 256,
     clip_coef: float = 0.2,
     value_coef: float = 0.5,
     entropy_coef: float = 0.01,
@@ -269,6 +271,9 @@ def train(
 
         batch_adv = normalise_advantages(batch_adv)
 
+        batch_size = batch_act.shape[0]
+        n_minibatches = batch_size // mini_batch_size
+
         run.track(float(roll.rew.mean()), name="rollout/reward_mean", step=update)
         run.track(float(roll.rew.sum()), name="rollout/reward_sum", step=update)
         run.track(float(adv.ret.mean()), name="rollout/return_mean", step=update)
@@ -276,51 +281,61 @@ def train(
         run.track(float(roll.val.mean()), name="rollout/value_mean", step=update)
 
         for epoch in range(update_epochs):
-            out = policy.get_action_and_value(batch_obs, batch_act)
-            ratio = probability_ratio(out.log_prob, batch_log_prob)
-            policy_loss = clipped_policy_loss(ratio, batch_adv, clip_coef)
-            value_loss = value_function_loss(out.val, batch_ret)
-            entropy = entropy_bonus(out.entropy)
-            loss = ppo_loss(
-                policy_loss=policy_loss,
-                value_loss=value_loss,
-                entropy=entropy,
-                value_coef=value_coef,
-                entropy_coef=entropy_coef,
-            )
+            batch_perm = torch.randperm(batch_size)
+            for mini_batch_start in range(0, batch_size, mini_batch_size):
+                mini_batch = batch_perm[mini_batch_start:mini_batch_start + mini_batch_size] 
+                mini_batch_act = batch_act[mini_batch]
+                mini_batch_obs = batch_obs[mini_batch]
+                mini_batch_log_prob = batch_log_prob[mini_batch]
+                mini_batch_adv = batch_adv[mini_batch]
+                mini_batch_ret = batch_ret[mini_batch]
 
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
+                out = policy.get_action_and_value(mini_batch_obs, mini_batch_act)
+                ratio = probability_ratio(out.log_prob, mini_batch_log_prob)
+                policy_loss = clipped_policy_loss(ratio, mini_batch_adv, clip_coef)
+                value_loss = value_function_loss(out.val, mini_batch_ret)
+                entropy = entropy_bonus(out.entropy)
+                loss = ppo_loss(
+                    policy_loss=policy_loss,
+                    value_loss=value_loss,
+                    entropy=entropy,
+                    value_coef=value_coef,
+                    entropy_coef=entropy_coef,
+                )
 
-            update_step = update * update_epochs + epoch
+                optim.zero_grad()
+                loss.backward()
+                optim.step()
 
-            run.track(float(loss.detach()), name="loss", step=update_step)
-            run.track(
-                float(policy_loss.detach()),
-                name="loss/policy",
-                step=update_step,
-            )
-            run.track(
-                float(value_loss.detach()),
-                name="loss/value",
-                step=update_step,
-            )
-            run.track(
-                float(entropy.detach()),
-                name="policy/entropy",
-                step=update_step,
-            )
-            run.track(
-                float(ratio.mean().detach()),
-                name="policy/ratio_mean",
-                step=update_step,
-            )
-            run.track(
-                float(ratio.std().detach()),
-                name="policy/ratio_std",
-                step=update_step,
-            )
+                mini_batch_idx = mini_batch_start // mini_batch_size
+                update_step = (update * update_epochs + epoch) * n_minibatches + mini_batch_idx
+
+                run.track(float(loss.detach()), name="loss", step=update_step)
+                run.track(
+                    float(policy_loss.detach()),
+                    name="loss/policy",
+                    step=update_step,
+                )
+                run.track(
+                    float(value_loss.detach()),
+                    name="loss/value",
+                    step=update_step,
+                )
+                run.track(
+                    float(entropy.detach()),
+                    name="policy/entropy",
+                    step=update_step,
+                )
+                run.track(
+                    float(ratio.mean().detach()),
+                    name="policy/ratio_mean",
+                    step=update_step,
+                )
+                run.track(
+                    float(ratio.std().detach()),
+                    name="policy/ratio_std",
+                    step=update_step,
+                )
 
     env.close()
 

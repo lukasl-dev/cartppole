@@ -176,6 +176,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aim" },
+    { name = "click" },
     { name = "gymnasium" },
     { name = "matplotlib" },
     { name = "numpy" },
@@ -186,6 +187,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aim" },
+    { name = "click" },
     { name = "gymnasium" },
     { name = "matplotlib" },
     { name = "numpy" },
