@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 from typing import Annotated, NamedTuple
 
 import click
@@ -11,6 +12,18 @@ import numpy as np
 from cartppole.environment import Environment
 from cartppole.policy import Policy
 from cartppole.advantages import Advantage, monte_carlo
+
+
+def git_commit_hash() -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(__file__).resolve().parents[2],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
 
 
 class Rollout(NamedTuple):
@@ -268,6 +281,12 @@ def train(
 
     run = Run()
     run.add_tag(env_id)
+
+    commit_hash = git_commit_hash()
+    if commit_hash is not None:
+        run.add_tag(commit_hash)
+        run["commit"] = commit_hash
+
     for k, v in params.items():
         run[k] = str(v) if isinstance(v, Path) else v
 
