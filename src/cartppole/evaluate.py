@@ -67,6 +67,7 @@ def evaluate(
     finally:
         env.close()
 
+    click.echo(f"{'checkpoint:':<24}{checkpoint_path}")
     click.echo(f"{'episodes:':<24}{n_episodes}")
     click.echo(
         f"{'return mean±std:':<24}{np.mean(episode_returns):.1f} ± {np.std(episode_returns):.1f}"
