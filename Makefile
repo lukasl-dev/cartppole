@@ -29,6 +29,9 @@ train_xl:
 train_xxl:
 	python src/cartppole/train.py --total-timesteps 5000000
 
+evaluate:
+	python src/cartppole/evaluate.py
+
 play:
 	python src/cartppole/play.py
 

@@ -7,9 +7,10 @@
     - [X] Track success rate, e.g. return >= 475
 - [ ] GAE
 - [ ] Evaluation
-    - [ ] Add evaluation script that loads a checkpoint
+    - [X] Add evaluation script that loads a checkpoint
     - [ ] Run deterministic/eval episodes without exploration
-    - [ ] Report average return and success rate
+    - [X] Report average return and success rate
+    - [X] Stability: include mean and std across seeds
 - [ ] Plotting
     - [ ] Plot episode return over training
     - [ ] Plot mean ± std across seeds
