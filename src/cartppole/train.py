@@ -1,3 +1,4 @@
+from enum import StrEnum
 from pathlib import Path
 import subprocess
 from typing import Annotated, NamedTuple
@@ -16,6 +17,23 @@ from cartppole.advantages import (
     generalised_advantage_estimation,
     monte_carlo,
 )
+
+
+class Metric(StrEnum):
+    episode_return_mean = "episode/return_mean"
+    episode_length_mean = "episode/length_mean"
+    episode_success_rate = "episode/success_rate"
+    rollout_reward_mean = "rollout/reward_mean"
+    rollout_reward_sum = "rollout/reward_sum"
+    rollout_return_mean = "rollout/return_mean"
+    rollout_advantage_mean = "rollout/advantage_mean"
+    rollout_value_mean = "rollout/value_mean"
+    loss = "loss"
+    loss_policy = "loss/policy"
+    loss_value = "loss/value"
+    policy_entropy = "policy/entropy"
+    policy_ratio_mean = "policy/ratio_mean"
+    policy_ratio_std = "policy/ratio_std"
 
 
 def git_commit_hash() -> str | None:
@@ -301,7 +319,7 @@ def train(
     advantage_estimator: str = "gae",
     discount_factor: float = 0.99,
     gae_lambda: float = 0.95,
-) -> None:
+) -> Run:
     params = locals().copy()
 
     run = Run()
@@ -390,19 +408,27 @@ def train(
 
         if episode_returns:
             run.track(
-                float(np.mean(episode_returns)), name="episode/return_mean", step=update
+                float(np.mean(episode_returns)),
+                name=Metric.episode_return_mean,
+                step=update,
             )
             run.track(
-                float(np.mean(episode_lengths)), name="episode/length_mean", step=update
+                float(np.mean(episode_lengths)),
+                name=Metric.episode_length_mean,
+                step=update,
             )
             success_rate = np.mean([r >= 475 for r in episode_returns])
-            run.track(float(success_rate), name="episode/success_rate", step=update)
+            run.track(
+                float(success_rate), name=Metric.episode_success_rate, step=update
+            )
 
-        run.track(float(roll.rew.mean()), name="rollout/reward_mean", step=update)
-        run.track(float(roll.rew.sum()), name="rollout/reward_sum", step=update)
-        run.track(float(adv.ret.mean()), name="rollout/return_mean", step=update)
-        run.track(float(adv.adv.mean()), name="rollout/advantage_mean", step=update)
-        run.track(float(roll.val.mean()), name="rollout/value_mean", step=update)
+        run.track(float(roll.rew.mean()), name=Metric.rollout_reward_mean, step=update)
+        run.track(float(roll.rew.sum()), name=Metric.rollout_reward_sum, step=update)
+        run.track(float(adv.ret.mean()), name=Metric.rollout_return_mean, step=update)
+        run.track(
+            float(adv.adv.mean()), name=Metric.rollout_advantage_mean, step=update
+        )
+        run.track(float(roll.val.mean()), name=Metric.rollout_value_mean, step=update)
 
         for epoch in range(update_epochs):
             batch_perm = torch.randperm(batch_size)
@@ -438,30 +464,30 @@ def train(
                     update * update_epochs + epoch
                 ) * n_minibatches + mini_batch_idx
 
-                run.track(float(loss.detach()), name="loss", step=update_step)
+                run.track(float(loss.detach()), name=Metric.loss, step=update_step)
                 run.track(
                     float(policy_loss.detach()),
-                    name="loss/policy",
+                    name=Metric.loss_policy,
                     step=update_step,
                 )
                 run.track(
                     float(value_loss.detach()),
-                    name="loss/value",
+                    name=Metric.loss_value,
                     step=update_step,
                 )
                 run.track(
                     float(entropy.detach()),
-                    name="policy/entropy",
+                    name=Metric.policy_entropy,
                     step=update_step,
                 )
                 run.track(
                     float(ratio.mean().detach()),
-                    name="policy/ratio_mean",
+                    name=Metric.policy_ratio_mean,
                     step=update_step,
                 )
                 run.track(
                     float(ratio.std().detach()),
-                    name="policy/ratio_std",
+                    name=Metric.policy_ratio_std,
                     step=update_step,
                 )
 
@@ -477,6 +503,7 @@ def train(
         },
         checkpoint_path,
     )
+    return run
 
 
 if __name__ == "__main__":
