@@ -1,5 +1,5 @@
 from enum import StrEnum
-from typing import Annotated, Final, NamedTuple, cast
+from typing import Annotated, NamedTuple, cast
 
 import gymnasium as gym
 import numpy as np

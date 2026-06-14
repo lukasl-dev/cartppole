@@ -65,3 +65,69 @@ def monte_carlo(
 
     advantages: Annotated[Tensor, "n_steps n_envs"] = returns - val
     return Advantage(ret=returns, adv=advantages)
+
+
+def generalised_advantage_estimation(
+    rew: Annotated[Tensor, "n_steps n_envs"],
+    dones: Annotated[Tensor, "n_steps n_envs"],
+    val: Annotated[Tensor, "n_steps n_envs"],
+    next_val: Annotated[Tensor, "n_envs"],
+    next_done: Annotated[Tensor, "n_envs"],
+    discount_factor: float,
+    gae_lambda: float,
+) -> Advantage:
+    r"""Compute Generalised Advantage Estimation (GAE).
+
+    GAE computes advantages by exponentially weighting multi-step temporal
+    difference residuals:
+
+    $$
+    \delta_t = r_t + \gamma (1 - d_{t+1}) V(s_{t+1}) - V(s_t)
+    $$
+
+    $$
+    A_t^\mathrm{GAE} = \delta_t + \gamma \lambda (1 - d_{t+1})
+        A_{t+1}^\mathrm{GAE}
+    $$
+
+    ``lambda`` controls the bias/variance trade-off: lower values rely more on
+    the critic's one-step TD errors, while values near ``1`` approach Monte
+    Carlo-style advantages. Value targets for PPO's critic are then:
+
+    $$
+    R_t = A_t^\mathrm{GAE} + V(s_t)
+    $$
+
+    Args:
+        rew: Rewards.
+        dones: Done flags stored at the start of each rollout step. Therefore,
+            ``dones[step + 1]`` is the terminal mask for transition ``step``.
+        val: Critic estimates ``V(s_t)``.
+        next_val: Critic estimate for the observation after the rollout.
+        next_done: Done flags for the observation after the rollout.
+        discount_factor: Gamma.
+        gae_lambda: GAE lambda.
+
+    Returns:
+        Lambda-return value targets and GAE advantages.
+    """
+    advantages: Annotated[Tensor, "n_steps n_envs"] = zeros_like(rew)
+    last_gae_lam = zeros_like(next_val)
+
+    for step in reversed(range(rew.shape[0])):
+        # Use rollout bootstrap values at the end; otherwise use the next stored step.
+        if step == rew.shape[0] - 1:
+            next_nonterminal = 1.0 - next_done
+            next_value = next_val
+        else:
+            next_nonterminal = 1.0 - dones[step + 1]
+            next_value = val[step + 1]
+
+        delta = rew[step] + discount_factor * next_nonterminal * next_value - val[step]
+        last_gae_lam = (
+            delta + discount_factor * gae_lambda * next_nonterminal * last_gae_lam
+        )
+        advantages[step] = last_gae_lam
+
+    returns: Annotated[Tensor, "n_steps n_envs"] = advantages + val
+    return Advantage(ret=returns, adv=advantages)

@@ -11,7 +11,11 @@ import numpy as np
 
 from cartppole.environment import Environment
 from cartppole.policy import Policy
-from cartppole.advantages import Advantage, monte_carlo
+from cartppole.advantages import (
+    Advantage,
+    generalised_advantage_estimation,
+    monte_carlo,
+)
 
 
 def git_commit_hash() -> str | None:
@@ -204,7 +208,8 @@ def entropy_bonus(
     r"""Compute the mean policy entropy bonus.
 
     $$
-    H[\pi_\theta](s_t) = -\sum_a \pi_\theta(a \mid s_t) \log \pi_\theta(a \mid s_t)
+    \mathcal{H}(\pi_\theta(\cdot \mid s_t)) =
+        -\sum_a \pi_\theta(a \mid s_t) \log \pi_\theta(a \mid s_t)
     $$
     """
     return entropy.mean()
@@ -254,11 +259,29 @@ def ppo_loss(
     type=click.Path(dir_okay=False, path_type=Path),
 )
 @click.option(
+    "--discount-factor",
     "--mc.discount_factor",
-    "mc_discount_factor",
+    "discount_factor",
     default=0.99,
     show_default=True,
     type=float,
+    help="Reward discount factor gamma.",
+)
+@click.option(
+    "--advantage-estimator",
+    default="gae",
+    show_default=True,
+    type=click.Choice(["gae", "monte-carlo"]),
+    help="Advantage estimator used for PPO targets.",
+)
+@click.option(
+    "--gae-lambda",
+    "--gae.lambda",
+    "gae_lambda",
+    default=0.95,
+    show_default=True,
+    type=float,
+    help="Lambda parameter for Generalised Advantage Estimation.",
 )
 def train(
     env_id: str = "CartPole-v1",
@@ -275,7 +298,9 @@ def train(
     update_epochs: int = 4,
     total_timesteps: int = 100_000,
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
-    mc_discount_factor: float = 0.99,
+    advantage_estimator: str = "gae",
+    discount_factor: float = 0.99,
+    gae_lambda: float = 0.95,
 ) -> None:
     params = locals().copy()
 
@@ -319,14 +344,30 @@ def train(
             env=env,
             policy=policy,
         )
-        adv: Advantage = monte_carlo(
-            rew=roll.rew,
-            dones=roll.done,
-            val=roll.val,
-            next_val=roll.next_val,
-            next_done=roll.next_done,
-            discount_factor=mc_discount_factor,
-        )
+
+        adv: Advantage
+        match advantage_estimator:
+            case "gae":
+                adv = generalised_advantage_estimation(
+                    rew=roll.rew,
+                    dones=roll.done,
+                    val=roll.val,
+                    next_val=roll.next_val,
+                    next_done=roll.next_done,
+                    discount_factor=discount_factor,
+                    gae_lambda=gae_lambda,
+                )
+            case "monte-carlo":
+                adv = monte_carlo(
+                    rew=roll.rew,
+                    dones=roll.done,
+                    val=roll.val,
+                    next_val=roll.next_val,
+                    next_done=roll.next_done,
+                    discount_factor=discount_factor,
+                )
+            case _:
+                raise ValueError(f"unknown advantage estimator: {advantage_estimator}")
 
         batch_obs: Annotated[Tensor, "batch_size obs_dim"] = roll.obs.reshape(
             (-1, roll.obs.shape[-1])

@@ -5,7 +5,7 @@
     - [ ] Keep rollout state across updates instead of resetting every rollout
     - [X] Log episode return and episode length during training
     - [X] Track success rate, e.g. return >= 475
-- [ ] GAE
+- [X] GAE
 - [ ] Evaluation
     - [X] Add evaluation script that loads a checkpoint
     - [ ] Run deterministic/eval episodes without exploration
