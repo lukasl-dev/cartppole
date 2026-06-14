@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import NamedTuple
 
 import click
 import numpy as np
@@ -9,31 +10,25 @@ from cartppole.environment import Environment
 from cartppole.policy import Policy
 
 
-@click.command()
-@click.option(
-    "--env",
-    "env_id",
-    default="CartPole-v1",
-    show_default=True,
-    type=str,
-    help="Gymnasium environment ID.",
-)
-@click.option(
-    "--checkpoint-path",
-    default="checkpoints/policy.pt",
-    show_default=True,
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-)
-@click.option("--success-threshold", default=475.0, show_default=True, type=float)
-@click.option("--n-episodes", default=60, show_default=True, type=int)
-@click.option("--seed", default=0, show_default=True, type=int)
+class EvaluationResult(NamedTuple):
+    checkpoint_path: Path
+    n_episodes: int
+    success_threshold: float
+    episode_returns: list[float]
+    return_mean: float
+    return_std: float
+    return_min: float
+    return_max: float
+    success_rate: float
+
+
 def evaluate(
     env_id: str = "CartPole-v1",
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
     success_threshold: float = 475,
     n_episodes: int = 60,
     seed: int = 0,
-):
+) -> EvaluationResult:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     env = Environment(id=env_id, n_envs=1)
@@ -45,7 +40,7 @@ def evaluate(
     policy.load_state_dict(checkpoint["policy"])
     policy.eval()
 
-    episode_returns = []
+    episode_returns: list[float] = []
 
     try:
         for episode in range(n_episodes):
@@ -67,17 +62,64 @@ def evaluate(
     finally:
         env.close()
 
-    click.echo(f"{'checkpoint:':<24}{checkpoint_path}")
-    click.echo(f"{'episodes:':<24}{n_episodes}")
-    click.echo(
-        f"{'return mean±std:':<24}{np.mean(episode_returns):.1f} ± {np.std(episode_returns):.1f}"
+    returns = np.array(episode_returns)
+    return EvaluationResult(
+        checkpoint_path=checkpoint_path,
+        n_episodes=n_episodes,
+        success_threshold=success_threshold,
+        episode_returns=episode_returns,
+        return_mean=float(np.mean(returns)),
+        return_std=float(np.std(returns)),
+        return_min=float(np.min(returns)),
+        return_max=float(np.max(returns)),
+        success_rate=float(np.mean(returns >= success_threshold)),
     )
-    click.echo(f"{'return min:':<24}{np.min(episode_returns):.1f}")
-    click.echo(f"{'return max:':<24}{np.max(episode_returns):.1f}")
+
+
+@click.command()
+@click.option(
+    "--env",
+    "env_id",
+    default="CartPole-v1",
+    show_default=True,
+    type=str,
+    help="Gymnasium environment ID.",
+)
+@click.option(
+    "--checkpoint-path",
+    default="checkpoints/policy.pt",
+    show_default=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option("--success-threshold", default=475.0, show_default=True, type=float)
+@click.option("--n-episodes", default=60, show_default=True, type=int)
+@click.option("--seed", default=0, show_default=True, type=int)
+def evaluate_cli(
+    env_id: str = "CartPole-v1",
+    checkpoint_path: Path = Path("checkpoints/policy.pt"),
+    success_threshold: float = 475,
+    n_episodes: int = 60,
+    seed: int = 0,
+) -> None:
+    result = evaluate(
+        env_id=env_id,
+        checkpoint_path=checkpoint_path,
+        success_threshold=success_threshold,
+        n_episodes=n_episodes,
+        seed=seed,
+    )
+    click.echo(f"{'checkpoint:':<24}{result.checkpoint_path}")
+    click.echo(f"{'episodes:':<24}{result.n_episodes}")
     click.echo(
-        f"{'success rate:':<24}{np.mean(np.array(episode_returns) >= success_threshold):.2f}  (return ≥ {success_threshold})"
+        f"{'return mean±std:':<24}{result.return_mean:.1f} ± {result.return_std:.1f}"
+    )
+    click.echo(f"{'return min:':<24}{result.return_min:.1f}")
+    click.echo(f"{'return max:':<24}{result.return_max:.1f}")
+    click.echo(
+        f"{'success rate:':<24}{result.success_rate:.2f}  "
+        f"(return ≥ {result.success_threshold})"
     )
 
 
 if __name__ == "__main__":
-    evaluate()
+    evaluate_cli()

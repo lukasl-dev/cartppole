@@ -2,7 +2,7 @@ export PYTHONPATH=src
 
 CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
 
-.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl evaluate play docs docs_gen docs_open aim
+.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl ablation evaluate play docs docs/gen docs/open aim
 
 dumb_game:
 	python scripts/dumb_game.py
@@ -30,6 +30,9 @@ train_xl:
 
 train_xxl:
 	python src/cartppole/train.py --total-timesteps 5000000 --checkpoint-path checkpoints/policy_xxl.pt
+
+ablation:
+	python src/cartppole/ablation.py --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 $(ARGS)
 
 evaluate:
 	python src/cartppole/evaluate.py $(ARGS)

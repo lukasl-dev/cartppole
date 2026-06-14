@@ -249,58 +249,6 @@ def ppo_loss(
     return policy_loss + value_coef * value_loss - entropy_coef * entropy
 
 
-@click.command()
-@click.option(
-    "--env",
-    "env_id",
-    default="CartPole-v1",
-    show_default=True,
-    type=str,
-    help="Gymnasium environment ID.",
-)
-@click.option("--seed", default=0, show_default=True, type=int)
-@click.option("--n-envs", default=8, show_default=True, type=int)
-@click.option("--render", is_flag=True, help="Render the environment.")
-@click.option("--hidden-dim", default=64, show_default=True, type=int)
-@click.option("--learning-rate", default=2.5e-4, show_default=True, type=float)
-@click.option("--n-steps", default=128, show_default=True, type=int)
-@click.option("--mini-batch-size", default=256, show_default=True, type=int)
-@click.option("--clip-coef", default=0.2, show_default=True, type=float)
-@click.option("--value-coef", default=0.5, show_default=True, type=float)
-@click.option("--entropy-coef", default=0.01, show_default=True, type=float)
-@click.option("--update-epochs", default=4, show_default=True, type=int)
-@click.option("--total-timesteps", default=100_000, show_default=True, type=int)
-@click.option(
-    "--checkpoint-path",
-    default="checkpoints/policy.pt",
-    show_default=True,
-    type=click.Path(dir_okay=False, path_type=Path),
-)
-@click.option(
-    "--discount-factor",
-    "--mc.discount_factor",
-    "discount_factor",
-    default=0.99,
-    show_default=True,
-    type=float,
-    help="Reward discount factor gamma.",
-)
-@click.option(
-    "--advantage-estimator",
-    default="gae",
-    show_default=True,
-    type=click.Choice(["gae", "monte-carlo"]),
-    help="Advantage estimator used for PPO targets.",
-)
-@click.option(
-    "--gae-lambda",
-    "--gae.lambda",
-    "gae_lambda",
-    default=0.95,
-    show_default=True,
-    type=float,
-    help="Lambda parameter for Generalised Advantage Estimation.",
-)
 def train(
     env_id: str = "CartPole-v1",
     seed: int = 0,
@@ -506,5 +454,97 @@ def train(
     return run
 
 
+@click.command()
+@click.option(
+    "--env",
+    "env_id",
+    default="CartPole-v1",
+    show_default=True,
+    type=str,
+    help="Gymnasium environment ID.",
+)
+@click.option("--seed", default=0, show_default=True, type=int)
+@click.option("--n-envs", default=8, show_default=True, type=int)
+@click.option("--render", is_flag=True, help="Render the environment.")
+@click.option("--hidden-dim", default=64, show_default=True, type=int)
+@click.option("--learning-rate", default=2.5e-4, show_default=True, type=float)
+@click.option("--n-steps", default=128, show_default=True, type=int)
+@click.option("--mini-batch-size", default=256, show_default=True, type=int)
+@click.option("--clip-coef", default=0.2, show_default=True, type=float)
+@click.option("--value-coef", default=0.5, show_default=True, type=float)
+@click.option("--entropy-coef", default=0.01, show_default=True, type=float)
+@click.option("--update-epochs", default=4, show_default=True, type=int)
+@click.option("--total-timesteps", default=100_000, show_default=True, type=int)
+@click.option(
+    "--checkpoint-path",
+    default="checkpoints/policy.pt",
+    show_default=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--discount-factor",
+    "--mc.discount_factor",
+    "discount_factor",
+    default=0.99,
+    show_default=True,
+    type=float,
+    help="Reward discount factor gamma.",
+)
+@click.option(
+    "--advantage-estimator",
+    default="gae",
+    show_default=True,
+    type=click.Choice(["gae", "monte-carlo"]),
+    help="Advantage estimator used for PPO targets.",
+)
+@click.option(
+    "--gae-lambda",
+    "--gae.lambda",
+    "gae_lambda",
+    default=0.95,
+    show_default=True,
+    type=float,
+    help="Lambda parameter for Generalised Advantage Estimation.",
+)
+def train_cli(
+    env_id: str = "CartPole-v1",
+    seed: int = 0,
+    n_envs: int = 8,
+    render: bool = False,
+    hidden_dim: int = 64,
+    learning_rate: float = 2.5e-4,
+    n_steps: int = 128,
+    mini_batch_size: int = 256,
+    clip_coef: float = 0.2,
+    value_coef: float = 0.5,
+    entropy_coef: float = 0.01,
+    update_epochs: int = 4,
+    total_timesteps: int = 100_000,
+    checkpoint_path: Path = Path("checkpoints/policy.pt"),
+    advantage_estimator: str = "gae",
+    discount_factor: float = 0.99,
+    gae_lambda: float = 0.95,
+) -> Run:
+    return train(
+        env_id=env_id,
+        seed=seed,
+        n_envs=n_envs,
+        render=render,
+        hidden_dim=hidden_dim,
+        learning_rate=learning_rate,
+        n_steps=n_steps,
+        mini_batch_size=mini_batch_size,
+        clip_coef=clip_coef,
+        value_coef=value_coef,
+        entropy_coef=entropy_coef,
+        update_epochs=update_epochs,
+        total_timesteps=total_timesteps,
+        checkpoint_path=checkpoint_path,
+        advantage_estimator=advantage_estimator,
+        discount_factor=discount_factor,
+        gae_lambda=gae_lambda,
+    )
+
+
 if __name__ == "__main__":
-    train()
+    train_cli()
