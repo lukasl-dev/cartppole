@@ -12,6 +12,7 @@ jobs:
     outputs:
       report: ${{ steps.filter.outputs.report }}
       check: ${{ steps.filter.outputs.check }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
@@ -30,6 +31,9 @@ jobs:
               - 'flake.nix'
               - 'flake.lock'
               - 'nix/packages/**'
+              - '.github/workflows/ci.yaml'
+            docs:
+              - 'src/**'
               - '.github/workflows/ci.yaml'
 
   check:
@@ -78,3 +82,38 @@ jobs:
         with:
           name: report
           path: result/report.pdf
+
+  docs:
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: "https://cache.lukasl.dev/"
+          cache: cartppole
+          token: "${{ secrets.CACHE_SECRET }}"
+
+      - name: Build docs
+        run: nix build .#docs --accept-flake-config
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: result
+
+      - uses: actions/deploy-pages@v4
+        id: deployment
+        if: ${{ github.event_name == 'push' && github.ref_name == github.event.repository.default_branch }}

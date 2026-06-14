@@ -38,8 +38,8 @@
           projectRoot = ./.;
         };
 
-        mkPythonEnv =
-          python:
+        mkPythonEnvWith =
+          python: extraPackages:
           let
             resolved = project.renderers.withPackages { inherit python; };
           in
@@ -51,7 +51,14 @@
               pygame
               ruff
             ])
+            ++ extraPackages ps
           );
+
+        mkPythonEnv = python: mkPythonEnvWith python (_: [ ]);
+
+        pythonDocsEnv =
+          python:
+          mkPythonEnvWith python (ps: [ ps.pdoc ]);
 
         baseOverrides = self: super: {
           aim-ui = self.callPackage ./nix/packages/aim-ui.nix { };
@@ -127,6 +134,35 @@
         };
 
         packages = {
+          docs = pkgs.stdenvNoCC.mkDerivation {
+            pname = "cartppole-docs";
+            version = "master";
+            src = ./.;
+
+            nativeBuildInputs = [ (pythonDocsEnv pythonCPU) ];
+
+            buildPhase = # bash
+              ''
+                runHook preBuild
+
+                export HOME="$TMPDIR"
+                export PYTHONPATH="$PWD/src"
+                pdoc --math -o "$TMPDIR/docs" cartppole
+
+                runHook postBuild
+              '';
+
+            installPhase = # bash
+              ''
+                runHook preInstall
+
+                mkdir -p "$out"
+                cp -R "$TMPDIR/docs/." "$out/"
+
+                runHook postInstall
+              '';
+          };
+
           report = pkgs.stdenvNoCC.mkDerivation {
             pname = "cartppole-report";
             version = "master";
