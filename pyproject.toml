@@ -20,3 +20,8 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = "src"
+
+[dependency-groups]
+dev = [
+    "pdoc>=16.0.0",
+]

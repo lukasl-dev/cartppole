@@ -1,6 +1,8 @@
 export PYTHONPATH=src
 
-.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl evaluate play aim
+CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
+
+.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl evaluate play docs docs_gen docs_open aim
 
 dumb_game:
 	python scripts/dumb_game.py
@@ -34,6 +36,18 @@ evaluate:
 
 play:
 	python src/cartppole/play.py $(ARGS)
+
+docs: docs/gen docs/open
+
+docs/gen: docs/.stamp
+
+docs/.stamp: $(CARTPPOLE_SOURCES) pyproject.toml uv.lock
+	mkdir -p docs
+	uv run pdoc --math -o docs/ cartppole
+	touch $@
+
+docs/open: docs/.stamp
+	xdg-open docs/cartppole.html
 
 aim:
 	aim up
