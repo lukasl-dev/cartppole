@@ -32,7 +32,7 @@ train_xxl:
 	python src/cartppole/train.py --total-timesteps 5000000 --checkpoint-path checkpoints/policy_xxl.pt
 
 ablation:
-	python src/cartppole/ablation.py --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 $(ARGS)
+	python src/cartppole/ablation.py --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,monte-carlo  $(ARGS)
 
 evaluate:
 	python src/cartppole/evaluate.py $(ARGS)

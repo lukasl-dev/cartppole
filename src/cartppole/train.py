@@ -34,6 +34,9 @@ class Metric(StrEnum):
     policy_entropy = "policy/entropy"
     policy_ratio_mean = "policy/ratio_mean"
     policy_ratio_std = "policy/ratio_std"
+    eval_return_mean = "eval/return_mean"
+    eval_return_std = "eval/return_std"
+    eval_success_rate = "eval/success_rate"
 
 
 def git_commit_hash() -> str | None:

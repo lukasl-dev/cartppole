@@ -5,12 +5,14 @@ from typing import NamedTuple
 import click
 
 from cartppole.evaluate import evaluate
-from cartppole.train import train
+from cartppole.train import Metric, train
 
 
 class AblationResult(NamedTuple):
     run_hash: str
     clip_coef: float
+    learning_rate: float
+    advantage_estimator: str
     gae_lambda: float
     discount_factor: float
     n_steps: int
@@ -33,6 +35,26 @@ def parse_float_list(
         raise click.BadParameter(
             "expected comma-separated floats", param=param
         ) from err
+
+
+def parse_advantage_estimators(
+    _: click.Context,
+    param: click.Parameter,
+    value: str,
+) -> list[str]:
+    choices = {"gae", "monte-carlo"}
+    values = [part.strip() for part in value.split(",") if part.strip()]
+    if not values:
+        raise click.BadParameter("expected a comma-separated list", param=param)
+
+    invalid = [item for item in values if item not in choices]
+    if invalid:
+        raise click.BadParameter(
+            f"expected choices from {sorted(choices)}, got {invalid}",
+            param=param,
+        )
+
+    return values
 
 
 def parse_rollout_update_ratios(
@@ -65,6 +87,8 @@ def parse_rollout_update_ratios(
 def checkpoint_for_ablation(
     checkpoint_path: Path,
     clip_coef: float,
+    learning_rate: float,
+    advantage_estimator: str,
     gae_lambda: float,
     discount_factor: float,
     n_steps: int,
@@ -75,6 +99,8 @@ def checkpoint_for_ablation(
 
     suffix = (
         f"clip-{format_value(clip_coef)}_"
+        f"lr-{format_value(learning_rate)}_"
+        f"adv-{advantage_estimator}_"
         f"gae-{format_value(gae_lambda)}_"
         f"gamma-{format_value(discount_factor)}_"
         f"steps-{n_steps}_"
@@ -89,25 +115,27 @@ def markdown_table(results: list[AblationResult]) -> str:
     headers = [
         "run",
         "clip",
+        "lr",
+        "adv",
         "gae λ",
         "γ",
         "n_steps",
         "epochs",
         "return μ±σ",
         "success",
-        "checkpoint",
     ]
     rows = [
         [
             result.run_hash,
             str(result.clip_coef),
+            str(result.learning_rate),
+            result.advantage_estimator,
             str(result.gae_lambda),
             str(result.discount_factor),
             str(result.n_steps),
             str(result.update_epochs),
             f"{result.return_mean:.1f} ± {result.return_std:.1f}",
             f"{result.success_rate:.2f}",
-            str(result.checkpoint_path),
         ]
         for result in results
     ]
@@ -142,7 +170,14 @@ def markdown_table(results: list[AblationResult]) -> str:
 @click.option("--n-envs", default=8, show_default=True, type=int)
 @click.option("--render", is_flag=True, help="Render the environment.")
 @click.option("--hidden-dim", default=64, show_default=True, type=int)
-@click.option("--learning-rate", default=2.5e-4, show_default=True, type=float)
+@click.option(
+    "--learning-rates",
+    "--learning-rate",
+    default="2.5e-4",
+    show_default=True,
+    callback=parse_float_list,
+    help="Comma-separated learning rates to ablate.",
+)
 @click.option("--mini-batch-size", default=256, show_default=True, type=int)
 @click.option("--value-coef", default=0.5, show_default=True, type=float)
 @click.option("--entropy-coef", default=0.01, show_default=True, type=float)
@@ -168,11 +203,12 @@ def markdown_table(results: list[AblationResult]) -> str:
     help="Comma-separated reward discount factors gamma to ablate.",
 )
 @click.option(
+    "--advantage-estimators",
     "--advantage-estimator",
     default="gae",
     show_default=True,
-    type=click.Choice(["gae", "monte-carlo"]),
-    help="Advantage estimator used for PPO targets.",
+    callback=parse_advantage_estimators,
+    help="Comma-separated advantage estimators to ablate: gae,monte-carlo.",
 )
 @click.option(
     "--clip-coefs",
@@ -204,7 +240,7 @@ def ablation(
     n_envs: int = 8,
     render: bool = False,
     hidden_dim: int = 64,
-    learning_rate: float = 2.5e-4,
+    learning_rates: list[float] | None = None,
     mini_batch_size: int = 256,
     value_coef: float = 0.5,
     entropy_coef: float = 0.01,
@@ -214,23 +250,34 @@ def ablation(
     eval_seed: int = 10_000,
     checkpoint_path: Path = Path("checkpoints/ablation/policy.pt"),
     discount_factors: list[float] | None = None,
-    advantage_estimator: str = "gae",
+    advantage_estimators: list[str] | None = None,
     clip_coefs: list[float] | None = None,
     gae_lambdas: list[float] | None = None,
     rollout_update_ratios: list[tuple[int, int]] | None = None,
 ) -> list[AblationResult]:
     clip_coefs = clip_coefs or [0.1, 0.2, 0.3]
+    learning_rates = learning_rates or [2.5e-4]
+    advantage_estimators = advantage_estimators or ["gae"]
     gae_lambdas = gae_lambdas or [0.9, 0.95, 0.97]
     discount_factors = discount_factors or [0.99]
     rollout_update_ratios = rollout_update_ratios or [(128, 4)]
 
     results: list[AblationResult] = []
     experiments = list(
-        product(clip_coefs, gae_lambdas, discount_factors, rollout_update_ratios)
+        product(
+            clip_coefs,
+            learning_rates,
+            advantage_estimators,
+            gae_lambdas,
+            discount_factors,
+            rollout_update_ratios,
+        )
     )
 
     for index, (
         clip_coef,
+        learning_rate,
+        advantage_estimator,
         gae_lambda,
         discount_factor,
         rollout_update_ratio,
@@ -242,6 +289,8 @@ def ablation(
         run_checkpoint_path = checkpoint_for_ablation(
             checkpoint_path=checkpoint_path,
             clip_coef=clip_coef,
+            learning_rate=learning_rate,
+            advantage_estimator=advantage_estimator,
             gae_lambda=gae_lambda,
             discount_factor=discount_factor,
             n_steps=n_steps,
@@ -251,6 +300,8 @@ def ablation(
         click.echo(
             f"Ablation {index}/{len(experiments)}: "
             f"clip_coef={clip_coef}, "
+            f"learning_rate={learning_rate}, "
+            f"advantage_estimator={advantage_estimator}, "
             f"gae_lambda={gae_lambda}, "
             f"discount_factor={discount_factor}, "
             f"n_steps={n_steps}, "
@@ -276,28 +327,36 @@ def ablation(
             discount_factor=discount_factor,
             gae_lambda=gae_lambda,
         )
-        run.add_tag("ablation")
-        evaluation = evaluate(
-            env_id=env_id,
-            checkpoint_path=run_checkpoint_path,
-            success_threshold=success_threshold,
-            n_episodes=n_eval_episodes,
-            seed=eval_seed,
-        )
-        results.append(
-            AblationResult(
-                run_hash=run.hash,
-                clip_coef=clip_coef,
-                gae_lambda=gae_lambda,
-                discount_factor=discount_factor,
-                n_steps=n_steps,
-                update_epochs=update_epochs,
-                return_mean=evaluation.return_mean,
-                return_std=evaluation.return_std,
-                success_rate=evaluation.success_rate,
+        try:
+            run.add_tag("ablation")
+            evaluation = evaluate(
+                env_id=env_id,
                 checkpoint_path=run_checkpoint_path,
+                success_threshold=success_threshold,
+                n_episodes=n_eval_episodes,
+                seed=eval_seed,
             )
-        )
+            run.track(evaluation.return_mean, name=Metric.eval_return_mean, step=0)
+            run.track(evaluation.return_std, name=Metric.eval_return_std, step=0)
+            run.track(evaluation.success_rate, name=Metric.eval_success_rate, step=0)
+            results.append(
+                AblationResult(
+                    run_hash=run.hash,
+                    clip_coef=clip_coef,
+                    learning_rate=learning_rate,
+                    advantage_estimator=advantage_estimator,
+                    gae_lambda=gae_lambda,
+                    discount_factor=discount_factor,
+                    n_steps=n_steps,
+                    update_epochs=update_epochs,
+                    return_mean=evaluation.return_mean,
+                    return_std=evaluation.return_std,
+                    success_rate=evaluation.success_rate,
+                    checkpoint_path=run_checkpoint_path,
+                )
+            )
+        finally:
+            run.close()
 
     click.echo("\n## Ablation runs")
     click.echo(markdown_table(results))
