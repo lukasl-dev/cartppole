@@ -8,7 +8,7 @@ from cartppole.evaluate import evaluate
 from cartppole.train import Metric, train
 
 
-class AblationResult(NamedTuple):
+class SweepResult(NamedTuple):
     run_hash: str
     seed: int
     clip_coef: float
@@ -99,7 +99,7 @@ def parse_rollout_update_ratios(
     return ratios
 
 
-def checkpoint_for_ablation(
+def checkpoint_for_sweep(
     checkpoint_path: Path,
     seed: int,
     clip_coef: float,
@@ -132,7 +132,7 @@ def checkpoint_for_ablation(
     )
 
 
-def markdown_table(results: list[AblationResult]) -> str:
+def markdown_table(results: list[SweepResult]) -> str:
     headers = [
         "run",
         "seed",
@@ -199,7 +199,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="0",
     show_default=True,
     callback=parse_int_list,
-    help="Comma-separated training seeds to ablate.",
+    help="Comma-separated training seeds to sweep.",
 )
 @click.option("--n-envs", default=8, show_default=True, type=int)
 @click.option("--render", is_flag=True, help="Render the environment.")
@@ -210,7 +210,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="2.5e-4",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated learning rates to ablate.",
+    help="Comma-separated learning rates to sweep.",
 )
 @click.option("--mini-batch-size", default=256, show_default=True, type=int)
 @click.option(
@@ -219,7 +219,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="0.5",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated value loss coefficients to ablate.",
+    help="Comma-separated value loss coefficients to sweep.",
 )
 @click.option(
     "--entropy-coefs",
@@ -227,7 +227,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="0.01",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated entropy coefficients to ablate.",
+    help="Comma-separated entropy coefficients to sweep.",
 )
 @click.option("--total-timesteps", default=100_000, show_default=True, type=int)
 @click.option("--n-eval-episodes", default=60, show_default=True, type=int)
@@ -235,17 +235,17 @@ def markdown_table(results: list[AblationResult]) -> str:
 @click.option("--eval-seed", default=10_000, show_default=True, type=int)
 @click.option(
     "--name",
-    "ablation_name",
+    "sweep_name",
     default=None,
     type=str,
-    help="Optional ablation name. Added as an Aim tag and parameter.",
+    help="Optional sweep name. Added as an Aim tag and parameter.",
 )
 @click.option(
     "--checkpoint-path",
-    default="checkpoints/ablation/policy.pt",
+    default="checkpoints/sweep/policy.pt",
     show_default=True,
     type=click.Path(dir_okay=False, path_type=Path),
-    help="Base checkpoint path. Each ablation run gets a suffixed file name.",
+    help="Base checkpoint path. Each sweep run gets a suffixed file name.",
 )
 @click.option(
     "--discount-factors",
@@ -255,7 +255,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="0.99",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated reward discount factors gamma to ablate.",
+    help="Comma-separated reward discount factors gamma to sweep.",
 )
 @click.option(
     "--advantage-estimators",
@@ -263,7 +263,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="gae",
     show_default=True,
     callback=parse_advantage_estimators,
-    help="Comma-separated advantage estimators to ablate: gae,mc.",
+    help="Comma-separated advantage estimators to sweep: gae,mc.",
 )
 @click.option(
     "--clip-coefs",
@@ -272,14 +272,14 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="0.1,0.2,0.3",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated PPO clip coefficients to ablate.",
+    help="Comma-separated PPO clip coefficients to sweep.",
 )
 @click.option(
     "--gae-lambdas",
     default="0.9,0.95,0.97",
     show_default=True,
     callback=parse_float_list,
-    help="Comma-separated GAE lambda values to ablate.",
+    help="Comma-separated GAE lambda values to sweep.",
 )
 @click.option(
     "--rollout-update-ratios",
@@ -287,9 +287,9 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="128:4",
     show_default=True,
     callback=parse_rollout_update_ratios,
-    help="Comma-separated N_STEPS:UPDATE_EPOCHS pairs to ablate.",
+    help="Comma-separated N_STEPS:UPDATE_EPOCHS pairs to sweep.",
 )
-def ablation(
+def sweep(
     env_id: str = "CartPole-v1",
     seeds: list[int] | None = None,
     n_envs: int = 8,
@@ -303,14 +303,14 @@ def ablation(
     n_eval_episodes: int = 60,
     success_threshold: float = 475,
     eval_seed: int = 10_000,
-    ablation_name: str | None = None,
-    checkpoint_path: Path = Path("checkpoints/ablation/policy.pt"),
+    sweep_name: str | None = None,
+    checkpoint_path: Path = Path("checkpoints/sweep/policy.pt"),
     discount_factors: list[float] | None = None,
     advantage_estimators: list[str] | None = None,
     clip_coefs: list[float] | None = None,
     gae_lambdas: list[float] | None = None,
     rollout_update_ratios: list[tuple[int, int]] | None = None,
-) -> list[AblationResult]:
+) -> list[SweepResult]:
     seeds = seeds or [0]
     clip_coefs = clip_coefs or [0.1, 0.2, 0.3]
     learning_rates = learning_rates or [2.5e-4]
@@ -321,7 +321,7 @@ def ablation(
     discount_factors = discount_factors or [0.99]
     rollout_update_ratios = rollout_update_ratios or [(128, 4)]
 
-    results: list[AblationResult] = []
+    results: list[SweepResult] = []
     experiments = [
         (
             seed,
@@ -371,7 +371,7 @@ def ablation(
         start=1,
     ):
         n_steps, update_epochs = rollout_update_ratio
-        run_checkpoint_path = checkpoint_for_ablation(
+        run_checkpoint_path = checkpoint_for_sweep(
             checkpoint_path=checkpoint_path,
             seed=seed,
             clip_coef=clip_coef,
@@ -386,7 +386,7 @@ def ablation(
         )
 
         click.echo(
-            f"Ablation {index}/{len(experiments)}: "
+            f"Sweep {index}/{len(experiments)}: "
             f"seed={seed}, "
             f"clip_coef={clip_coef}, "
             f"learning_rate={learning_rate}, "
@@ -419,10 +419,10 @@ def ablation(
             gae_lambda=gae_lambda,
         )
         try:
-            run.add_tag("ablation")
-            if ablation_name is not None:
-                run.add_tag(ablation_name)
-                run["ablation/name"] = ablation_name
+            run.add_tag("sweep")
+            if sweep_name is not None:
+                run.add_tag(sweep_name)
+                run["sweep"] = sweep_name
 
             evaluation = evaluate(
                 env_id=env_id,
@@ -435,7 +435,7 @@ def ablation(
             run.track(evaluation.return_std, name=Metric.eval_return_std, step=0)
             run.track(evaluation.success_rate, name=Metric.eval_success_rate, step=0)
             results.append(
-                AblationResult(
+                SweepResult(
                     run_hash=run.hash,
                     seed=seed,
                     clip_coef=clip_coef,
@@ -456,11 +456,11 @@ def ablation(
         finally:
             run.close()
 
-    title = "Ablation runs" if ablation_name is None else f"Ablation runs: {ablation_name}"
+    title = "Sweep runs" if sweep_name is None else f"Sweep runs: {sweep_name}"
     click.echo(f"\n## {title}")
     click.echo(markdown_table(results))
     return results
 
 
 if __name__ == "__main__":
-    ablation()
+    sweep()

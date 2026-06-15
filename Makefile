@@ -3,9 +3,9 @@ export PYTHONPATH=src
 CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
 
 # https://arxiv.org/abs/2109.08203
-ABLATION_FLAGS := --seeds 0,1,2,3407 --clip-ranges 0.1,0.2,0.3 --learning-rates 0.0001,0.00025,0.0005 --value-coefs 0.25,0.5 --entropy-coefs 0.0,0.01 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
+SWEEP_FLAGS := --seeds 0,1,2,3407 --clip-ranges 0.1,0.2,0.3 --learning-rates 0.0001,0.00025,0.0005 --value-coefs 0.25,0.5 --entropy-coefs 0.0,0.01 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
 
-.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl ablation ablation_xs ablation_sm ablation_md ablation_lg ablation_xl ablation_xxl evaluate play docs docs/gen docs/open aim
+.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl sweep sweep_xs sweep_sm sweep_md sweep_lg sweep_xl sweep_xxl evaluate play docs docs/gen docs/open aim
 
 dumb_game:
 	python scripts/dumb_game.py
@@ -34,26 +34,26 @@ train_xl:
 train_xxl:
 	python src/cartppole/train.py --total-timesteps 5000000 --checkpoint-path checkpoints/policy_xxl.pt
 
-ablation:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) $(ARGS)
+sweep:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) $(ARGS)
 
-ablation_xs:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 1024 $(ARGS)
+sweep_xs:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 1024 $(ARGS)
 
-ablation_sm:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 10000 $(ARGS)
+sweep_sm:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 10000 $(ARGS)
 
-ablation_md:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 100000 $(ARGS)
+sweep_md:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 100000 $(ARGS)
 
-ablation_lg:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 500000 $(ARGS)
+sweep_lg:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 500000 $(ARGS)
 
-ablation_xl:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 1000000 $(ARGS)
+sweep_xl:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 1000000 $(ARGS)
 
-ablation_xxl:
-	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 5000000 $(ARGS)
+sweep_xxl:
+	python src/cartppole/sweep.py $(SWEEP_FLAGS) --total-timesteps 5000000 $(ARGS)
 
 evaluate:
 	python src/cartppole/evaluate.py $(ARGS)
