@@ -13,6 +13,8 @@ class AblationResult(NamedTuple):
     seed: int
     clip_coef: float
     learning_rate: float
+    value_coef: float
+    entropy_coef: float
     advantage_estimator: str
     gae_lambda: float
     discount_factor: float
@@ -102,6 +104,8 @@ def checkpoint_for_ablation(
     seed: int,
     clip_coef: float,
     learning_rate: float,
+    value_coef: float,
+    entropy_coef: float,
     advantage_estimator: str,
     gae_lambda: float,
     discount_factor: float,
@@ -115,6 +119,8 @@ def checkpoint_for_ablation(
         f"seed-{seed}_"
         f"clip-{format_value(clip_coef)}_"
         f"lr-{format_value(learning_rate)}_"
+        f"vf-{format_value(value_coef)}_"
+        f"ent-{format_value(entropy_coef)}_"
         f"adv-{advantage_estimator}_"
         f"gae-{format_value(gae_lambda)}_"
         f"gamma-{format_value(discount_factor)}_"
@@ -132,6 +138,8 @@ def markdown_table(results: list[AblationResult]) -> str:
         "seed",
         "clip",
         "lr",
+        "vf",
+        "ent",
         "adv",
         "gae λ",
         "γ",
@@ -146,6 +154,8 @@ def markdown_table(results: list[AblationResult]) -> str:
             str(result.seed),
             str(result.clip_coef),
             str(result.learning_rate),
+            str(result.value_coef),
+            str(result.entropy_coef),
             result.advantage_estimator,
             str(result.gae_lambda),
             str(result.discount_factor),
@@ -203,12 +213,33 @@ def markdown_table(results: list[AblationResult]) -> str:
     help="Comma-separated learning rates to ablate.",
 )
 @click.option("--mini-batch-size", default=256, show_default=True, type=int)
-@click.option("--value-coef", default=0.5, show_default=True, type=float)
-@click.option("--entropy-coef", default=0.01, show_default=True, type=float)
+@click.option(
+    "--value-coefs",
+    "--value-coef",
+    default="0.5",
+    show_default=True,
+    callback=parse_float_list,
+    help="Comma-separated value loss coefficients to ablate.",
+)
+@click.option(
+    "--entropy-coefs",
+    "--entropy-coef",
+    default="0.01",
+    show_default=True,
+    callback=parse_float_list,
+    help="Comma-separated entropy coefficients to ablate.",
+)
 @click.option("--total-timesteps", default=100_000, show_default=True, type=int)
 @click.option("--n-eval-episodes", default=60, show_default=True, type=int)
 @click.option("--success-threshold", default=475.0, show_default=True, type=float)
 @click.option("--eval-seed", default=10_000, show_default=True, type=int)
+@click.option(
+    "--name",
+    "ablation_name",
+    default=None,
+    type=str,
+    help="Optional ablation name. Added as an Aim tag and parameter.",
+)
 @click.option(
     "--checkpoint-path",
     default="checkpoints/ablation/policy.pt",
@@ -266,12 +297,13 @@ def ablation(
     hidden_dim: int = 64,
     learning_rates: list[float] | None = None,
     mini_batch_size: int = 256,
-    value_coef: float = 0.5,
-    entropy_coef: float = 0.01,
+    value_coefs: list[float] | None = None,
+    entropy_coefs: list[float] | None = None,
     total_timesteps: int = 100_000,
     n_eval_episodes: int = 60,
     success_threshold: float = 475,
     eval_seed: int = 10_000,
+    ablation_name: str | None = None,
     checkpoint_path: Path = Path("checkpoints/ablation/policy.pt"),
     discount_factors: list[float] | None = None,
     advantage_estimators: list[str] | None = None,
@@ -282,6 +314,8 @@ def ablation(
     seeds = seeds or [0]
     clip_coefs = clip_coefs or [0.1, 0.2, 0.3]
     learning_rates = learning_rates or [2.5e-4]
+    value_coefs = value_coefs or [0.5]
+    entropy_coefs = entropy_coefs or [0.01]
     advantage_estimators = advantage_estimators or ["gae"]
     gae_lambdas = gae_lambdas or [0.9, 0.95, 0.97]
     discount_factors = discount_factors or [0.99]
@@ -293,6 +327,8 @@ def ablation(
             seed,
             clip_coef,
             learning_rate,
+            value_coef,
+            entropy_coef,
             advantage_estimator,
             gae_lambda,
             discount_factor,
@@ -302,6 +338,8 @@ def ablation(
             seed,
             clip_coef,
             learning_rate,
+            value_coef,
+            entropy_coef,
             advantage_estimator,
             discount_factor,
             rollout_update_ratio,
@@ -309,6 +347,8 @@ def ablation(
             seeds,
             clip_coefs,
             learning_rates,
+            value_coefs,
+            entropy_coefs,
             advantage_estimators,
             discount_factors,
             rollout_update_ratios,
@@ -320,6 +360,8 @@ def ablation(
         seed,
         clip_coef,
         learning_rate,
+        value_coef,
+        entropy_coef,
         advantage_estimator,
         gae_lambda,
         discount_factor,
@@ -334,6 +376,8 @@ def ablation(
             seed=seed,
             clip_coef=clip_coef,
             learning_rate=learning_rate,
+            value_coef=value_coef,
+            entropy_coef=entropy_coef,
             advantage_estimator=advantage_estimator,
             gae_lambda=gae_lambda,
             discount_factor=discount_factor,
@@ -346,6 +390,8 @@ def ablation(
             f"seed={seed}, "
             f"clip_coef={clip_coef}, "
             f"learning_rate={learning_rate}, "
+            f"value_coef={value_coef}, "
+            f"entropy_coef={entropy_coef}, "
             f"advantage_estimator={advantage_estimator}, "
             f"gae_lambda={gae_lambda}, "
             f"discount_factor={discount_factor}, "
@@ -374,6 +420,10 @@ def ablation(
         )
         try:
             run.add_tag("ablation")
+            if ablation_name is not None:
+                run.add_tag(ablation_name)
+                run["ablation/name"] = ablation_name
+
             evaluation = evaluate(
                 env_id=env_id,
                 checkpoint_path=run_checkpoint_path,
@@ -390,6 +440,8 @@ def ablation(
                     seed=seed,
                     clip_coef=clip_coef,
                     learning_rate=learning_rate,
+                    value_coef=value_coef,
+                    entropy_coef=entropy_coef,
                     advantage_estimator=advantage_estimator,
                     gae_lambda=gae_lambda,
                     discount_factor=discount_factor,
@@ -404,7 +456,8 @@ def ablation(
         finally:
             run.close()
 
-    click.echo("\n## Ablation runs")
+    title = "Ablation runs" if ablation_name is None else f"Ablation runs: {ablation_name}"
+    click.echo(f"\n## {title}")
     click.echo(markdown_table(results))
     return results
 
