@@ -5,7 +5,7 @@ from typing import NamedTuple
 import click
 
 from cartppole.evaluate import evaluate
-from cartppole.train import Metric, train
+from cartppole.train import Metric, PolicyLoss, train
 
 
 class SweepResult(NamedTuple):
@@ -16,6 +16,8 @@ class SweepResult(NamedTuple):
     value_coef: float
     entropy_coef: float
     advantage_estimator: str
+    normalise_advantages: bool
+    policy_loss: str
     gae_lambda: float
     discount_factor: float
     n_steps: int
@@ -52,12 +54,53 @@ def parse_int_list(_: click.Context, param: click.Parameter, value: str) -> list
         ) from err
 
 
+def parse_bool_list(_: click.Context, param: click.Parameter, value: str) -> list[bool]:
+    values = [part.strip().lower() for part in value.split(",") if part.strip()]
+    if not values:
+        raise click.BadParameter("expected a comma-separated list", param=param)
+
+    parsed: list[bool] = []
+    for item in values:
+        match item:
+            case "true" | "t" | "1" | "yes" | "y":
+                parsed.append(True)
+            case "false" | "f" | "0" | "no" | "n":
+                parsed.append(False)
+            case _:
+                raise click.BadParameter(
+                    "expected comma-separated booleans, e.g. true,false",
+                    param=param,
+                )
+
+    return parsed
+
+
 def parse_advantage_estimators(
     _: click.Context,
     param: click.Parameter,
     value: str,
 ) -> list[str]:
     choices = {"gae", "mc"}
+    values = [part.strip() for part in value.split(",") if part.strip()]
+    if not values:
+        raise click.BadParameter("expected a comma-separated list", param=param)
+
+    invalid = [item for item in values if item not in choices]
+    if invalid:
+        raise click.BadParameter(
+            f"expected choices from {sorted(choices)}, got {invalid}",
+            param=param,
+        )
+
+    return values
+
+
+def parse_policy_losses(
+    _: click.Context,
+    param: click.Parameter,
+    value: str,
+) -> list[str]:
+    choices = {loss.value for loss in PolicyLoss}
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
         raise click.BadParameter("expected a comma-separated list", param=param)
@@ -107,6 +150,8 @@ def checkpoint_for_sweep(
     value_coef: float,
     entropy_coef: float,
     advantage_estimator: str,
+    normalise_advantages: bool,
+    policy_loss: str,
     gae_lambda: float,
     discount_factor: float,
     n_steps: int,
@@ -122,6 +167,8 @@ def checkpoint_for_sweep(
         f"vf-{format_value(value_coef)}_"
         f"ent-{format_value(entropy_coef)}_"
         f"adv-{advantage_estimator}_"
+        f"norm-{normalise_advantages}_"
+        f"policy-{policy_loss}_"
         f"gae-{format_value(gae_lambda)}_"
         f"gamma-{format_value(discount_factor)}_"
         f"steps-{n_steps}_"
@@ -141,6 +188,8 @@ def markdown_table(results: list[SweepResult]) -> str:
         "vf",
         "ent",
         "adv",
+        "norm",
+        "policy",
         "gae λ",
         "γ",
         "n_steps",
@@ -157,6 +206,8 @@ def markdown_table(results: list[SweepResult]) -> str:
             str(result.value_coef),
             str(result.entropy_coef),
             result.advantage_estimator,
+            str(result.normalise_advantages),
+            result.policy_loss,
             str(result.gae_lambda),
             str(result.discount_factor),
             str(result.n_steps),
@@ -266,6 +317,21 @@ def markdown_table(results: list[SweepResult]) -> str:
     help="Comma-separated advantage estimators to sweep: gae,mc.",
 )
 @click.option(
+    "--normalise-advantages",
+    default="true",
+    show_default=True,
+    callback=parse_bool_list,
+    help="Comma-separated booleans for advantage normalisation, e.g. true,false.",
+)
+@click.option(
+    "--policy-losses",
+    "--policy-loss",
+    default=PolicyLoss.clipped.value,
+    show_default=True,
+    callback=parse_policy_losses,
+    help="Comma-separated policy losses to sweep: clipped,unclipped.",
+)
+@click.option(
     "--clip-coefs",
     "--clip-ranges",
     "clip_coefs",
@@ -307,6 +373,8 @@ def sweep(
     checkpoint_path: Path = Path("checkpoints/sweep/policy.pt"),
     discount_factors: list[float] | None = None,
     advantage_estimators: list[str] | None = None,
+    normalise_advantages: list[bool] | None = None,
+    policy_losses: list[str] | None = None,
     clip_coefs: list[float] | None = None,
     gae_lambdas: list[float] | None = None,
     rollout_update_ratios: list[tuple[int, int]] | None = None,
@@ -317,6 +385,8 @@ def sweep(
     value_coefs = value_coefs or [0.5]
     entropy_coefs = entropy_coefs or [0.01]
     advantage_estimators = advantage_estimators or ["gae"]
+    normalise_advantages = normalise_advantages or [True]
+    policy_losses = policy_losses or [PolicyLoss.clipped.value]
     gae_lambdas = gae_lambdas or [0.9, 0.95, 0.97]
     discount_factors = discount_factors or [0.99]
     rollout_update_ratios = rollout_update_ratios or [(128, 4)]
@@ -330,6 +400,8 @@ def sweep(
             value_coef,
             entropy_coef,
             advantage_estimator,
+            normalise_advantage,
+            policy_loss,
             gae_lambda,
             discount_factor,
             rollout_update_ratio,
@@ -341,6 +413,8 @@ def sweep(
             value_coef,
             entropy_coef,
             advantage_estimator,
+            normalise_advantage,
+            policy_loss,
             discount_factor,
             rollout_update_ratio,
         ) in product(
@@ -350,6 +424,8 @@ def sweep(
             value_coefs,
             entropy_coefs,
             advantage_estimators,
+            normalise_advantages,
+            policy_losses,
             discount_factors,
             rollout_update_ratios,
         )
@@ -363,6 +439,8 @@ def sweep(
         value_coef,
         entropy_coef,
         advantage_estimator,
+        normalise_advantage,
+        policy_loss,
         gae_lambda,
         discount_factor,
         rollout_update_ratio,
@@ -379,6 +457,8 @@ def sweep(
             value_coef=value_coef,
             entropy_coef=entropy_coef,
             advantage_estimator=advantage_estimator,
+            normalise_advantages=normalise_advantage,
+            policy_loss=policy_loss,
             gae_lambda=gae_lambda,
             discount_factor=discount_factor,
             n_steps=n_steps,
@@ -393,6 +473,8 @@ def sweep(
             f"value_coef={value_coef}, "
             f"entropy_coef={entropy_coef}, "
             f"advantage_estimator={advantage_estimator}, "
+            f"normalise_advantages={normalise_advantage}, "
+            f"policy_loss={policy_loss}, "
             f"gae_lambda={gae_lambda}, "
             f"discount_factor={discount_factor}, "
             f"n_steps={n_steps}, "
@@ -415,6 +497,8 @@ def sweep(
             total_timesteps=total_timesteps,
             checkpoint_path=run_checkpoint_path,
             advantage_estimator=advantage_estimator,
+            normalise_advantages=normalise_advantage,
+            policy_loss=policy_loss,
             discount_factor=discount_factor,
             gae_lambda=gae_lambda,
         )
@@ -443,6 +527,8 @@ def sweep(
                     value_coef=value_coef,
                     entropy_coef=entropy_coef,
                     advantage_estimator=advantage_estimator,
+                    normalise_advantages=normalise_advantage,
+                    policy_loss=policy_loss,
                     gae_lambda=gae_lambda,
                     discount_factor=discount_factor,
                     n_steps=n_steps,

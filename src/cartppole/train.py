@@ -39,6 +39,11 @@ class Metric(StrEnum):
     eval_success_rate = "eval/success_rate"
 
 
+class PolicyLoss(StrEnum):
+    clipped = "clipped"
+    unclipped = "unclipped"
+
+
 def git_commit_hash() -> str | None:
     try:
         return subprocess.check_output(
@@ -149,7 +154,7 @@ def collect_completed_episodes(
     return episode_returns, episode_lengths
 
 
-def normalise_advantages(
+def normalise_advantage_values(
     adv: Annotated[Tensor, "batch_size"],
 ) -> Annotated[Tensor, "batch_size"]:
     r"""Normalise advantages.
@@ -206,6 +211,19 @@ def clipped_policy_loss(
         -adv * ratio,
         -adv * torch.clamp(ratio, 1 - clip_coef, 1 + clip_coef),
     ).mean()
+
+
+def unclipped_policy_loss(
+    ratio: Annotated[Tensor, "batch_size"],
+    adv: Annotated[Tensor, "batch_size"],
+) -> Annotated[Tensor, "scalar"]:
+    r"""Compute the negative unclipped policy-gradient surrogate.
+
+    $$
+    L^\mathrm{PG}(\theta) = \mathbb{E}_t[r_t(\theta) A_t]
+    $$
+    """
+    return (-adv * ratio).mean()
 
 
 def value_function_loss(
@@ -268,6 +286,8 @@ def train(
     total_timesteps: int = 100_000,
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
     advantage_estimator: str = "gae",
+    normalise_advantages: bool = True,
+    policy_loss: str = PolicyLoss.clipped,
     discount_factor: float = 0.99,
     gae_lambda: float = 0.95,
 ) -> Run:
@@ -346,7 +366,8 @@ def train(
         batch_ret: Annotated[Tensor, "batch_size"] = adv.ret.reshape(-1)
         batch_adv: Annotated[Tensor, "batch_size"] = adv.adv.reshape(-1)
 
-        batch_adv = normalise_advantages(batch_adv)
+        if normalise_advantages:
+            batch_adv = normalise_advantage_values(batch_adv)
 
         batch_size = batch_act.shape[0]
         n_minibatches = batch_size // mini_batch_size
@@ -395,11 +416,25 @@ def train(
 
                 out = policy.get_action_and_value(mini_batch_obs, mini_batch_act)
                 ratio = probability_ratio(out.log_prob, mini_batch_log_prob)
-                policy_loss = clipped_policy_loss(ratio, mini_batch_adv, clip_coef)
+                match policy_loss:
+                    case PolicyLoss.clipped:
+                        policy_loss_value = clipped_policy_loss(
+                            ratio,
+                            mini_batch_adv,
+                            clip_coef,
+                        )
+                    case PolicyLoss.unclipped:
+                        policy_loss_value = unclipped_policy_loss(
+                            ratio,
+                            mini_batch_adv,
+                        )
+                    case _:
+                        raise ValueError(f"unknown policy loss: {policy_loss}")
+
                 value_loss = value_function_loss(out.val, mini_batch_ret)
                 entropy = entropy_bonus(out.entropy)
                 loss = ppo_loss(
-                    policy_loss=policy_loss,
+                    policy_loss=policy_loss_value,
                     value_loss=value_loss,
                     entropy=entropy,
                     value_coef=value_coef,
@@ -417,7 +452,7 @@ def train(
 
                 run.track(float(loss.detach()), name=Metric.loss, step=update_step)
                 run.track(
-                    float(policy_loss.detach()),
+                    float(policy_loss_value.detach()),
                     name=Metric.loss_policy,
                     step=update_step,
                 )
@@ -501,6 +536,19 @@ def train(
     help="Advantage estimator used for PPO targets.",
 )
 @click.option(
+    "--normalise-advantages/--no-normalise-advantages",
+    default=True,
+    show_default=True,
+    help="Whether to normalise advantages before PPO updates.",
+)
+@click.option(
+    "--policy-loss",
+    default=PolicyLoss.clipped,
+    show_default=True,
+    type=click.Choice([loss.value for loss in PolicyLoss]),
+    help="Policy loss to use for PPO updates.",
+)
+@click.option(
     "--gae-lambda",
     "--gae.lambda",
     "gae_lambda",
@@ -525,6 +573,8 @@ def train_cli(
     total_timesteps: int = 100_000,
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
     advantage_estimator: str = "gae",
+    normalise_advantages: bool = True,
+    policy_loss: str = PolicyLoss.clipped,
     discount_factor: float = 0.99,
     gae_lambda: float = 0.95,
 ) -> Run:
@@ -544,6 +594,8 @@ def train_cli(
         total_timesteps=total_timesteps,
         checkpoint_path=checkpoint_path,
         advantage_estimator=advantage_estimator,
+        normalise_advantages=normalise_advantages,
+        policy_loss=policy_loss,
         discount_factor=discount_factor,
         gae_lambda=gae_lambda,
     )
