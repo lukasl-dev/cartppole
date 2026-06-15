@@ -3,7 +3,7 @@ export PYTHONPATH=src
 CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
 
 # https://arxiv.org/abs/2109.08203
-SWEEP_FLAGS := --seeds 0,1,2,3407 --clip-ranges 0.1,0.2,0.3 --learning-rates 0.0001,0.00025,0.0005 --value-coefs 0.25,0.5 --entropy-coefs 0.0,0.01 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
+SWEEP_FLAGS := --seeds 0,1,2,3407 --clip-ranges 0.1,0.2,0.3 --learning-rates 0.0001,0.00025,0.0005 --value-coefs 0.0,0.25,0.5 --entropy-coefs 0.0,0.01 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
 
 .PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl sweep sweep_xs sweep_sm sweep_md sweep_lg sweep_xl sweep_xxl evaluate play docs docs/gen docs/open aim
 
