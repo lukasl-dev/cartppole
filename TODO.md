@@ -14,9 +14,9 @@
 - [ ] Plotting
     - [ ] Plot episode return over training
     - [ ] Plot mean ± std across seeds
-- [ ] Ablation studies
-    - [ ] clip ranges
-    - [ ] GAE lambdas
+- [x] Ablation studies
+    - [x] clip ranges
+    - [x] GAE lambdas
 - [ ] Sensitivity to seeds
     - [ ] Train with multiple seeds
     - [ ] Report mean ± std
