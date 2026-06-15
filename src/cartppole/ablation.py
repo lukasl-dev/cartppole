@@ -10,6 +10,7 @@ from cartppole.train import Metric, train
 
 class AblationResult(NamedTuple):
     run_hash: str
+    seed: int
     clip_coef: float
     learning_rate: float
     advantage_estimator: str
@@ -34,6 +35,18 @@ def parse_float_list(
     except ValueError as err:
         raise click.BadParameter(
             "expected comma-separated floats", param=param
+        ) from err
+
+
+def parse_int_list(_: click.Context, param: click.Parameter, value: str) -> list[int]:
+    values = [part.strip() for part in value.split(",") if part.strip()]
+    if not values:
+        raise click.BadParameter("expected a comma-separated list", param=param)
+    try:
+        return [int(item) for item in values]
+    except ValueError as err:
+        raise click.BadParameter(
+            "expected comma-separated integers", param=param
         ) from err
 
 
@@ -86,6 +99,7 @@ def parse_rollout_update_ratios(
 
 def checkpoint_for_ablation(
     checkpoint_path: Path,
+    seed: int,
     clip_coef: float,
     learning_rate: float,
     advantage_estimator: str,
@@ -98,6 +112,7 @@ def checkpoint_for_ablation(
         return str(value).replace(".", "p")
 
     suffix = (
+        f"seed-{seed}_"
         f"clip-{format_value(clip_coef)}_"
         f"lr-{format_value(learning_rate)}_"
         f"adv-{advantage_estimator}_"
@@ -114,6 +129,7 @@ def checkpoint_for_ablation(
 def markdown_table(results: list[AblationResult]) -> str:
     headers = [
         "run",
+        "seed",
         "clip",
         "lr",
         "adv",
@@ -127,6 +143,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     rows = [
         [
             result.run_hash,
+            str(result.seed),
             str(result.clip_coef),
             str(result.learning_rate),
             result.advantage_estimator,
@@ -166,7 +183,14 @@ def markdown_table(results: list[AblationResult]) -> str:
     type=str,
     help="Gymnasium environment ID.",
 )
-@click.option("--seed", default=0, show_default=True, type=int)
+@click.option(
+    "--seeds",
+    "--seed",
+    default="0",
+    show_default=True,
+    callback=parse_int_list,
+    help="Comma-separated training seeds to ablate.",
+)
 @click.option("--n-envs", default=8, show_default=True, type=int)
 @click.option("--render", is_flag=True, help="Render the environment.")
 @click.option("--hidden-dim", default=64, show_default=True, type=int)
@@ -208,7 +232,7 @@ def markdown_table(results: list[AblationResult]) -> str:
     default="gae",
     show_default=True,
     callback=parse_advantage_estimators,
-    help="Comma-separated advantage estimators to ablate: gae,monte-carlo.",
+    help="Comma-separated advantage estimators to ablate: gae,mc.",
 )
 @click.option(
     "--clip-coefs",
@@ -236,7 +260,7 @@ def markdown_table(results: list[AblationResult]) -> str:
 )
 def ablation(
     env_id: str = "CartPole-v1",
-    seed: int = 0,
+    seeds: list[int] | None = None,
     n_envs: int = 8,
     render: bool = False,
     hidden_dim: int = 64,
@@ -255,6 +279,7 @@ def ablation(
     gae_lambdas: list[float] | None = None,
     rollout_update_ratios: list[tuple[int, int]] | None = None,
 ) -> list[AblationResult]:
+    seeds = seeds or [0]
     clip_coefs = clip_coefs or [0.1, 0.2, 0.3]
     learning_rates = learning_rates or [2.5e-4]
     advantage_estimators = advantage_estimators or ["gae"]
@@ -263,18 +288,36 @@ def ablation(
     rollout_update_ratios = rollout_update_ratios or [(128, 4)]
 
     results: list[AblationResult] = []
-    experiments = list(
-        product(
+    experiments = [
+        (
+            seed,
+            clip_coef,
+            learning_rate,
+            advantage_estimator,
+            gae_lambda,
+            discount_factor,
+            rollout_update_ratio,
+        )
+        for (
+            seed,
+            clip_coef,
+            learning_rate,
+            advantage_estimator,
+            discount_factor,
+            rollout_update_ratio,
+        ) in product(
+            seeds,
             clip_coefs,
             learning_rates,
             advantage_estimators,
-            gae_lambdas,
             discount_factors,
             rollout_update_ratios,
         )
-    )
+        for gae_lambda in (gae_lambdas if advantage_estimator == "gae" else [gae_lambdas[0]])
+    ]
 
     for index, (
+        seed,
         clip_coef,
         learning_rate,
         advantage_estimator,
@@ -288,6 +331,7 @@ def ablation(
         n_steps, update_epochs = rollout_update_ratio
         run_checkpoint_path = checkpoint_for_ablation(
             checkpoint_path=checkpoint_path,
+            seed=seed,
             clip_coef=clip_coef,
             learning_rate=learning_rate,
             advantage_estimator=advantage_estimator,
@@ -299,6 +343,7 @@ def ablation(
 
         click.echo(
             f"Ablation {index}/{len(experiments)}: "
+            f"seed={seed}, "
             f"clip_coef={clip_coef}, "
             f"learning_rate={learning_rate}, "
             f"advantage_estimator={advantage_estimator}, "
@@ -342,6 +387,7 @@ def ablation(
             results.append(
                 AblationResult(
                     run_hash=run.hash,
+                    seed=seed,
                     clip_coef=clip_coef,
                     learning_rate=learning_rate,
                     advantage_estimator=advantage_estimator,

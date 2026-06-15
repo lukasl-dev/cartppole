@@ -2,7 +2,8 @@ export PYTHONPATH=src
 
 CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
 
-ABLATION_FLAGS := --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
+# https://arxiv.org/abs/2109.08203
+ABLATION_FLAGS := --seeds 0,1,2,3407 --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
 
 .PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl ablation ablation_xs ablation_sm ablation_md ablation_lg ablation_xl ablation_xxl evaluate play docs docs/gen docs/open aim
 
