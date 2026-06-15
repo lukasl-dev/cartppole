@@ -326,7 +326,7 @@ def train(
                     discount_factor=discount_factor,
                     gae_lambda=gae_lambda,
                 )
-            case "monte-carlo":
+            case "mc":
                 adv = monte_carlo(
                     rew=roll.rew,
                     dones=roll.done,
@@ -497,7 +497,7 @@ def train(
     "--advantage-estimator",
     default="gae",
     show_default=True,
-    type=click.Choice(["gae", "monte-carlo"]),
+    type=click.Choice(["gae", "mc"]),
     help="Advantage estimator used for PPO targets.",
 )
 @click.option(

@@ -42,7 +42,7 @@ def parse_advantage_estimators(
     param: click.Parameter,
     value: str,
 ) -> list[str]:
-    choices = {"gae", "monte-carlo"}
+    choices = {"gae", "mc"}
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
         raise click.BadParameter("expected a comma-separated list", param=param)

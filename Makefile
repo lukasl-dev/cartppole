@@ -2,7 +2,9 @@ export PYTHONPATH=src
 
 CARTPPOLE_SOURCES := $(shell find src/cartppole -type f -name '*.py')
 
-.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl ablation evaluate play docs docs/gen docs/open aim
+ABLATION_FLAGS := --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,mc
+
+.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl ablation ablation_xs ablation_sm ablation_md ablation_lg ablation_xl ablation_xxl evaluate play docs docs/gen docs/open aim
 
 dumb_game:
 	python scripts/dumb_game.py
@@ -32,7 +34,25 @@ train_xxl:
 	python src/cartppole/train.py --total-timesteps 5000000 --checkpoint-path checkpoints/policy_xxl.pt
 
 ablation:
-	python src/cartppole/ablation.py --clip-ranges 0.1,0.2,0.3 --gae-lambdas 0.9,0.95,0.97 --advantage-estimators gae,monte-carlo  $(ARGS)
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) $(ARGS)
+
+ablation_xs:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 1024 $(ARGS)
+
+ablation_sm:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 10000 $(ARGS)
+
+ablation_md:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 100000 $(ARGS)
+
+ablation_lg:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 500000 $(ARGS)
+
+ablation_xl:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 1000000 $(ARGS)
+
+ablation_xxl:
+	python src/cartppole/ablation.py $(ABLATION_FLAGS) --total-timesteps 5000000 $(ARGS)
 
 evaluate:
 	python src/cartppole/evaluate.py $(ARGS)
