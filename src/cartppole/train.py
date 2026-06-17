@@ -302,7 +302,7 @@ def train(
         run["commit"] = commit_hash
 
     for k, v in params.items():
-        run[k] = str(v) if isinstance(v, Path) else v
+        run[k] = str(v) if isinstance(v, Path | StrEnum) else v
 
     torch.manual_seed(seed)
     np.random.seed(seed)
