@@ -1,6 +1,24 @@
-\documentclass{beamer}
+\documentclass[aspectratio=169, 11pt]{beamer}
 
-\usetheme{Boadilla}
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+
+% Custom colors
+\definecolor{tuwblue}{RGB}{0,102,153}
+\definecolor{tuwgray}{RGB}{128,128,128}
+\definecolor{successgreen}{RGB}{34,139,34}
+\definecolor{failred}{RGB}{178,34,34}
+
+% Custom colors
+\definecolor{tuwblue}{RGB}{0,102,153}
+\definecolor{tuwgray}{RGB}{128,128,128}
+\definecolor{successgreen}{RGB}{34,139,34}
+\definecolor{failred}{RGB}{178,34,34}
+
+\setbeamercolor{title}{fg=white,bg=tuwblue}
+\setbeamercolor{frametitle}{fg=white}
+\setbeamercolor{structure}{fg=tuwblue}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -38,7 +56,36 @@
 \end{frame}
 
 \section{CartPole Environment}
-\begin{frame}{CartPole Environment}
+\begin{frame}{CartPole Environment\footnote[frame]{Gymnasium: \url{https://gymnasium.farama.org/environments/classic_control/cart_pole/}}}
+  \begin{columns}
+    \begin{column}{0.35\textwidth}
+      \includegraphics[width=\textwidth]{assets/CartPole.png}
+    \end{column}
+    \begin{column}{0.65\textwidth}
+      A pole is attached to a cart moving along a frictionless track.
+      \vfill
+      \textbf{Goal:} Keep the pole balanced by applying left or right
+      forces.
+      \vfill
+      \textbf{Action space:} $0$ (left), $1$ (right)
+      \vfill
+      \textbf{Observation space:}
+      \begin{itemize}
+        \item Cart position $\in [-4.8, 4.8]$
+        \item Cart velocity $\in (-\infty, \infty)$
+        \item Pole angle $\in [-24^\circ, 24^\circ]$
+        \item Pole angular velocity $\in (-\infty, \infty)$
+      \end{itemize}
+      \vfill
+      \textbf{Reward:} $1$ per step while not terminated
+      \vfill
+      \textbf{Termination:}
+      \begin{itemize}
+        \item Pole angle exceeds $\pm 12^\circ$
+        \item Cart leaves area $[-2.4,2.4]$
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \section{Proximal Policy Optimization}
