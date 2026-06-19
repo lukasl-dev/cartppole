@@ -408,7 +408,6 @@ def sweep(
         )
         for (
             seed,
-            clip_coef,
             learning_rate,
             value_coef,
             entropy_coef,
@@ -419,7 +418,6 @@ def sweep(
             rollout_update_ratio,
         ) in product(
             seeds,
-            clip_coefs,
             learning_rates,
             value_coefs,
             entropy_coefs,
@@ -429,6 +427,7 @@ def sweep(
             discount_factors,
             rollout_update_ratios,
         )
+        for clip_coef in (clip_coefs if policy_loss == PolicyLoss.clipped else [clip_coefs[0]])
         for gae_lambda in (gae_lambdas if advantage_estimator == "gae" else [gae_lambdas[0]])
     ]
 
