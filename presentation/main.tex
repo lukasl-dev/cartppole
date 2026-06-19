@@ -30,6 +30,8 @@
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
 
 \title[PPO on CartPole]{Reinforcement Learning: PPO on CartPole}
 \subtitle{Introduction to Deep Learning}
@@ -57,8 +59,30 @@
 
 \subsection{Reinforcement Learning Definition}
 \begin{frame}{Reinforcement Learning Definition}
-  \centering
-  This slide will introduce the formal definition of reinforcement learning and the agent-environment interaction loop.
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \begin{itemize}
+        \item No fixed input-output pairs to learn from
+        \item Agent interacts with environment
+        \item Receives reward to indicate if its actions are good or bad
+        \item Learn a policy, that maximizes cumulative reward
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.6\textwidth}
+      \begin{center}
+      \begin{tikzpicture}[
+          node distance=2.5cm,
+          box/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.8cm, minimum height=1.2cm, rounded corners},
+          arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!80}
+        ]
+        \node[box] (agent) {\textbf{Agent}};
+        \node[box, right=of agent] (env) {\textbf{Environment}};
+        \draw[arrow, bend left=40] (agent.north) to node[above] {action} (env.north);
+        \draw[arrow, bend left=40] (env.south) to node[below] {state, reward} (agent.south);
+      \end{tikzpicture}
+      \end{center}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \subsection{Reinforcement Learning Environment}
