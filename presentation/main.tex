@@ -3,6 +3,8 @@
 \usetheme{Madrid}
 \usecolortheme{whale}
 \setbeamertemplate{navigation symbols}{}
+\setcounter{tocdepth}{1}
+\AtBeginSection{\begin{frame}\centering{\usebeamercolor[fg]{structure}\Huge\bfseries\insertsection}\end{frame}}
 
 % Custom colors
 \definecolor{tuwblue}{RGB}{0,102,153}
@@ -51,11 +53,21 @@
   \tableofcontents
 \end{frame}
 
-\section{Reinforcement Learning}
-\begin{frame}{Reinforcement Learning}
+\section{Introduction and Terms}
+
+\subsection{Reinforcement Learning Definition}
+\begin{frame}{Reinforcement Learning Definition}
+  \centering
+  This slide will introduce the formal definition of reinforcement learning and the agent-environment interaction loop.
 \end{frame}
 
-\section{CartPole Environment}
+\subsection{Reinforcement Learning Environment}
+\begin{frame}{Reinforcement Learning Environment}
+  \centering
+  This slide will describe how an RL environment is modeled as a Markov Decision Process (MDP) (within gymnasium).
+\end{frame}
+
+\subsection{CartPole Environment}
 \begin{frame}{CartPole Environment\footnote[frame]{Gymnasium: \url{https://gymnasium.farama.org/environments/classic_control/cart_pole/}}}
   \begin{columns}
     \begin{column}{0.35\textwidth}
@@ -88,21 +100,57 @@
   \end{columns}
 \end{frame}
 
+\subsection{Reinforcement Learning and PPO}
+\begin{frame}{Reinforcement Learning and PPO}
+  \centering
+  This slide will explain where in the Reinforcement Learning Process PPO fits in.
+\end{frame}
+
 \section{Proximal Policy Optimization}
-\begin{frame}{Policy Gradient Methods}
+
+\subsection{How PPO Works}
+\begin{frame}{How PPO Works}
+  \centering
+  This slide will provide a high-level overview of the PPO algorithm.
 \end{frame}
 
-\begin{frame}{The PPO Objective}
+\subsection{Mathematical Formulation}
+\begin{frame}{Mathematical Formulation}
+  \centering
+  This slide will present the core PPO loss function, ...
 \end{frame}
 
-\begin{frame}{Advantage Estimation and GAE}
+\subsection{Algorithm Pseudocode}
+\begin{frame}{Algorithm Pseudocode}
+  \centering
+  This slide will show the pseudocode for the PPO training loop with rollout collection and mini-batch updates.
 \end{frame}
 
-\begin{frame}{Implementation Details}
+\section{Experiment Setup}
+
+\subsection{Network Architecture}
+\begin{frame}{Network Architecture}
+  \centering
+  This slide will describe the actor and critic network architectures used in our implementation.
 \end{frame}
 
-\section{Evaluation}
-\begin{frame}{Evaluation}
+\subsection{Hyperparameters}
+\begin{frame}{Hyperparameters}
+  \centering
+  This slide will list the hyperparameters used for training, including learning rate, clipping parameter, GAE lambda, and rollout length.
+\end{frame}
+
+\subsection{Evaluation Metrics}
+\begin{frame}{Evaluation Metrics}
+  \centering
+  This slide will define the metrics used to evaluate performance, such as average episode return and stability across seeds.
+\end{frame}
+
+\section{Results}
+
+\begin{frame}{Results}
+  \centering
+  This slide will present the training curves and final performance of PPO on CartPole.
 \end{frame}
 
 \end{document}
