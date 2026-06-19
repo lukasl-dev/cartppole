@@ -87,8 +87,22 @@
 
 \subsection{Reinforcement Learning Environment}
 \begin{frame}{Reinforcement Learning Environment}
-  \centering
-  This slide will describe how an RL environment is modeled as a Markov Decision Process (MDP) (within gymnasium).
+  An environment is modeled as a \textbf{Markov Decision Process (MDP)}
+
+  \begin{itemize}
+    \item discrete time steps $t = 0, 1, 2, 3, ...$
+    \item At each time step
+      \begin{itemize}
+        \item environment state $S_t$
+        \item reward $R_t$ (if $t \neq 0$)
+        \item agent selects action $A_t$
+      \end{itemize}
+    \item resulting environment in next step is defined by
+      \begin{itemize}
+        \item probability distribution $p(s'|s,a)$
+        \item reward function $r(s,a)$
+      \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \subsection{CartPole Environment}
