@@ -252,7 +252,7 @@
           & GAE $\lambda \in \{0.90,\, 0.95,\, 0.97\}$ \\[0.3em]
         Rollout / update ratio
           & $(\text{rollout length},\, \text{epochs})$ pairs \\
-          & \in $\{(128, 4), (256, 4), (128, 8)\}$ \\
+          & $\in \{(128, 4), (256, 4), (128, 8)\}$ \\
         \bottomrule
       \end{tabular}
     \end{column}
@@ -282,7 +282,7 @@
   \begin{itemize}
     \item \textbf{Mean episode return} --- average reward collected per episode; maximum is $500$ per default
     \item \textbf{Standard Deviation} --- standard deviation across multiple seeds, to judge stability across seeds
-    \item \textbf{Success rate} --- episode is defined as "solved", if return \geq 475
+    \item \textbf{Success rate} --- episode is defined as "solved", if return $\geq 475$
 
     \item \textbf{Final evaluation} --- $60$ episodes after training; report above metrics
   \end{itemize}
