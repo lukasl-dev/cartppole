@@ -822,6 +822,98 @@
 
 \section{Results}
 
+\begin{frame}{Ablation Study: What Mattered?}
+  \scriptsize
+  \textbf{Setup:} CartPole-v1, 1M timesteps, 4 seeds $(0,1,2,3407)$,
+  60 evaluation episodes, success if return $\ge 475$.
+
+  \vspace{0.4em}
+  \noindent\hspace*{\fill}%
+    \begin{minipage}[t]{0.31\textwidth}\vspace{0pt}
+      \textbf{Clip range}\par\vspace{0.2em}
+      {\raggedright\tiny\setlength{\tabcolsep}{2pt}\renewcommand{\arraystretch}{1.15}%
+      \begin{tabular}{@{}ccc@{}}
+        \toprule
+        $\epsilon$ & Return & Success \\
+        \midrule
+        $0.1$ & $351.1 \pm 131.2$ & $0.46 \pm 0.42$ \\
+        \textbf{$0.2$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
+        $0.3$ & $334.3 \pm 169.0$ & $0.49 \pm 0.49$ \\
+        \multicolumn{3}{c}{\phantom{$0.0 \pm 0.0$}} \\
+        \bottomrule
+      \end{tabular}\par
+      }
+
+      \vspace{0.5em}
+      \textcolor{successgreen}{Best trade-off: $\epsilon=0.2$}
+    \end{minipage}%
+    \hspace*{\fill}%
+    \begin{minipage}[t]{0.34\textwidth}\vspace{0pt}
+      \textbf{Advantage estimator}\par\vspace{0.2em}
+      {\raggedright\tiny\setlength{\tabcolsep}{2pt}\renewcommand{\arraystretch}{1.15}%
+      \begin{tabular}{@{}ccc@{}}
+        \toprule
+        Estimator & Return & Success \\
+        \midrule
+        GAE $\lambda=0.90$ & $421.9 \pm 133.7$ & $0.75 \pm 0.43$ \\
+        \textbf{GAE $\lambda=0.95$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
+        GAE $\lambda=0.97$ & $289.4 \pm 117.3$ & $0.20 \pm 0.35$ \\
+        MC & $348.2 \pm 112.9$ & $0.23 \pm 0.28$ \\
+        \bottomrule
+      \end{tabular}\par
+      }
+
+      \vspace{0.5em}
+      \textcolor{successgreen}{GAE beats MC in the final run}
+    \end{minipage}%
+    \hspace*{\fill}%
+    \begin{minipage}[t]{0.31\textwidth}\vspace{0pt}
+      \textbf{Rollout / update}\par\vspace{0.2em}
+      {\raggedright\tiny\setlength{\tabcolsep}{2pt}\renewcommand{\arraystretch}{1.15}%
+      \begin{tabular}{@{}ccc@{}}
+        \toprule
+        Steps:epochs & Return & Success \\
+        \midrule
+        $64{:}4$ & $146.5 \pm 29.1$ & $0.00 \pm 0.00$ \\
+        $128{:}4$ & $418.1 \pm 133.3$ & $0.73 \pm 0.42$ \\
+        \textbf{$256{:}4$} & \textbf{$500.0 \pm 0.0$} & \textbf{$1.00 \pm 0.00$} \\
+        $128{:}8$ & $429.4 \pm 55.7$ & $0.68 \pm 0.25$ \\
+        \bottomrule
+      \end{tabular}\par
+      }
+
+      \vspace{0.5em}
+      \textcolor{successgreen}{Longer rollouts solved CartPole}
+    \end{minipage}%
+  \hspace*{\fill}\par
+
+  \vspace{0.9em}
+  \centering
+  \begin{tikzpicture}[
+      scale=0.92,
+      transform shape,
+      card/.style={rectangle, rounded corners, draw=tuwblue!75, thick,
+                   fill=tuwblue!5, minimum width=2.35cm, minimum height=0.95cm,
+                   align=center, font=\scriptsize},
+      result/.style={rectangle, rounded corners, draw=successgreen!80!black,
+                     ultra thick, fill=successgreen!12, minimum width=2.95cm,
+                     minimum height=1.15cm, align=center, font=\scriptsize\bfseries},
+      plus/.style={font=\Large\bfseries, text=tuwblue},
+      arrow/.style={-{Latex[length=2mm]}, ultra thick, successgreen!70!black}
+    ]
+    \node[font=\bfseries\small, text=tuwblue] at (0,0.95)
+      {Winning recipe: constrain updates, estimate advantages well, collect enough context};
+
+    \node[card] (clip) at (-4.20,0) {conservative\\clip $\epsilon=0.2$};
+    \node[plus] at (-2.775,0) {$+$};
+    \node[card] (gae) at (-1.35,0) {low-variance\\GAE $\lambda=0.95$};
+    \node[plus] at (0.075,0) {$+$};
+    \node[card] (roll) at (1.50,0) {longer rollout\\$256{:}4$};
+    \node[result] (res) at (4.85,0) {SOLVED\\$500.0\pm0.0$ return\\$100\%$ success};
+    \draw[arrow] (roll.east) -- (res.west);
+  \end{tikzpicture}
+\end{frame}
+
 \begin{frame}{Results}
   \centering
   This slide will present the training curves and final performance of PPO on CartPole.
