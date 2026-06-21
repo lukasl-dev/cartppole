@@ -168,20 +168,103 @@
 
 \subsection{Network Architecture}
 \begin{frame}{Network Architecture}
-  \centering
-  This slide will describe the actor and critic network architectures used in our implementation.
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \textbf{Actor} $\pi_\theta(a \mid s)$\\[0.5em]
+      \begin{tikzpicture}[
+          layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+                        minimum height=0.65cm, rounded corners, font=\small},
+          arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+          node distance=0.45cm
+        ]
+        \node[layer] (in)  {Input $(4)$};
+        \node[layer, below=of in]  (h1) {Linear$(64)$ + Tanh};
+        \node[layer, below=of h1]  (h2) {Linear$(64)$ + Tanh};
+        \node[layer, below=of h2]  (out) {Linear$(2)$};
+        \node[below=0.35cm of out, font=\small, text=tuwgray] (dist) {Categorical$(logits)$};
+        \draw[arrow] (in) -- (h1);
+        \draw[arrow] (h1) -- (h2);
+        \draw[arrow] (h2) -- (out);
+        \draw[arrow] (out) -- (dist);
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \centering
+      \textbf{Critic} $V_\theta(s)$\\[0.5em]
+      \begin{tikzpicture}[
+          layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+                        minimum height=0.65cm, rounded corners, font=\small},
+          arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+          node distance=0.45cm
+        ]
+        \node[layer] (in)  {Input $(4)$};
+        \node[layer, below=of in]  (h1) {Linear$(64)$ + Tanh};
+        \node[layer, below=of h1]  (h2) {Linear$(64)$ + Tanh};
+        \node[layer, below=of h2]  (out) {Linear$(1)$};
+        \node[below=0.35cm of out, font=\small, text=tuwgray] (val) {$V(s) \in \mathbb{R}$};
+        \draw[arrow] (in) -- (h1);
+        \draw[arrow] (h1) -- (h2);
+        \draw[arrow] (h2) -- (out);
+        \draw[arrow] (out) -- (val);
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-\subsection{Hyperparameters}
-\begin{frame}{Hyperparameters}
-  \centering
-  This slide will list the hyperparameters used for training, including learning rate, clipping parameter, GAE lambda, and rollout length.
+\subsection{Hyperparameter Sweep}
+\begin{frame}{Hyperparameter Sweep}
+  Grid search over three dimensions --- all other parameters fixed.
+  \vspace{0.6em}
+  \begin{columns}[T]
+    \begin{column}{0.58\textwidth}
+      \textbf{Varied across runs}\\[0.4em]
+      \begin{tabular}{ll}
+        \toprule
+        Dimension & Values \\
+        \midrule
+        Policy loss
+          & unclipped \\
+          & clipped $\epsilon \in \{0.1,\, 0.2,\, 0.3\}$ \\[0.3em]
+        Advantage estimator
+          & Monte Carlo \\
+          & GAE $\lambda \in \{0.90,\, 0.95,\, 0.97\}$ \\[0.3em]
+        Rollout / update ratio
+          & $(\text{rollout length},\, \text{epochs})$ pairs \\
+          & \in $\{(128, 4), (256, 4), (128, 8)\}$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.42\textwidth}
+      \textbf{Fixed}\\[0.4em]
+      \begin{tabular}{lc}
+        \toprule
+        Parameter & Value \\
+        \midrule
+        Learning rate $\alpha$ & $2.5 \times 10^{-4}$ \\
+        Discount factor $\gamma$ & $0.99$ \\
+        Value coef.\ $c_1$ & $0.5$ \\
+        Entropy coef.\ $c_2$ & $0.01$ \\
+        Parallel envs $N$ & $8$ \\
+        Mini-batch size & $256$ \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+  \vspace{0.5em}
+  \small Also evaluated across training set sizes:
+  $1\text{K},\; 10\text{K},\; 100\text{K},\; 500\text{K},\; 1\text{M},\; 5\text{M}$ timesteps.
 \end{frame}
 
 \subsection{Evaluation Metrics}
 \begin{frame}{Evaluation Metrics}
-  \centering
-  This slide will define the metrics used to evaluate performance, such as average episode return and stability across seeds.
+  \begin{itemize}
+    \item \textbf{Mean episode return} --- average reward collected per episode; maximum is $500$ per default
+    \item \textbf{Standard Deviation} --- standard deviation across multiple seeds, to judge stability across seeds
+    \item \textbf{Success rate} --- episode is defined as "solved", if return \geq 475
+
+    \item \textbf{Final evaluation} --- $60$ episodes after training; report above metrics
+  \end{itemize}
 \end{frame}
 
 \section{Results}
