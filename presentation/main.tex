@@ -146,22 +146,43 @@
 
 \section{Proximal Policy Optimization}
 
-\subsection{How PPO Works}
-\begin{frame}{How PPO Works}
+\subsection{Overview}
+\begin{frame}{Overview}
   \centering
-  This slide will provide a high-level overview of the PPO algorithm.
+  This slide will show the overall PPO structure: separate actor and critic
+  networks, how observations flow through each, and how the actor produces a
+  categorical action distribution while the critic produces a scalar value
+  estimate $V(s)$.
 \end{frame}
 
-\subsection{Mathematical Formulation}
-\begin{frame}{Mathematical Formulation}
+\subsection{Objective}
+\begin{frame}{Objective}
   \centering
-  This slide will present the core PPO loss function, ...
+  This slide will present the combined PPO loss (math), concepts used in there (advantage/clipping) will be explained in the followign slides.
 \end{frame}
 
-\subsection{Algorithm Pseudocode}
-\begin{frame}{Algorithm Pseudocode}
+\subsection{Advantage Estimation}
+\begin{frame}{Advantage Estimation}
   \centering
-  This slide will show the pseudocode for the PPO training loop with rollout collection and mini-batch updates.
+  This slide will explain how $A_t$ is computed. Explain Monte-Carlo Returns and GAE and compare them
+\end{frame}
+
+\subsection{Clipped vs.\ Unclipped Objective}
+\begin{frame}{Clipped vs.\ Unclipped Objective}
+  \centering
+  This slide will expand $L^{\mathrm{CLIP}}$: introduce the probability ratio
+  $r_t(\theta) = \pi_\theta(a_t \mid s_t) / \pi_{\theta_{\mathrm{old}}}(a_t \mid s_t)$,
+  show the unclipped surrogate $r_t A_t$, and contrast it with the clipped
+  version. Motivate why clipping stabilises training and note that $\epsilon$
+  is the ablation parameter tested later.
+\end{frame}
+
+\subsection{Training Loop}
+\begin{frame}{Training Loop}
+  \centering
+  This slide will show the PPO training loop as pseudocode: collect a rollout
+  of $T$ steps across $N$ parallel environments, compute advantages via GAE,
+  then run $K$ epochs of mini-batch updates over the collected data.
 \end{frame}
 
 \section{Experiment Setup}
