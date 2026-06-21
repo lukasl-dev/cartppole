@@ -31,7 +31,7 @@
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning}
+\usetikzlibrary{arrows.meta, positioning, calc}
 
 \title[PPO on CartPole]{Reinforcement Learning: PPO on CartPole}
 \subtitle{Introduction to Deep Learning}
@@ -500,12 +500,180 @@
   \end{tikzpicture}
 \end{frame}
 
+
 \subsection{Training Loop}
-\begin{frame}{Training Loop}
+\begin{frame}{Training Loop: One PPO Iteration}
+  PPO alternates between collecting fresh on-policy data and reusing that data
+  for a limited number of optimization steps.
+
+  \vspace{0.6em}
+  \begin{center}
+  \begin{tikzpicture}[
+      box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                  minimum width=3.0cm, minimum height=0.9cm, align=center},
+      arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!70},
+      node distance=0.7cm
+    ]
+    \node[box] (old) {current policy\\$\pi_{\theta_{\mathrm{old}}}$};
+    \node[box, right=of old] (rollout) {collect rollout\\$N\times T$ samples};
+    \node[box, right=of rollout] (adv) {compute\\$\hat{A}_t, V_t^{\mathrm{target}}$};
+    \node[box, below=of adv] (update) {mini-batch updates\\$K$ epochs};
+    \node[box, left=of update] (new) {new policy\\$\pi_\theta$};
+
+    \draw[arrow] (old) -- (rollout);
+    \draw[arrow] (rollout) -- (adv);
+    \draw[arrow] (adv) -- (update);
+    \draw[arrow] (update) -- (new);
+    \draw[arrow]
+      (new.west) .. controls +(-1.0,0) and +(0,-1.0) ..
+      node[pos=0.55, xshift=-0.2cm, left, font=\scriptsize] {$\theta_{\mathrm{old}}\leftarrow\theta$}
+      (old.south);
+  \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.3em}
+  \begin{itemize}
+    \item Data is \textbf{on-policy}: collected with the old policy before the update
+    \item The stored old log-probabilities define the ratio $r_t(\theta)$ during optimization
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Training Loop: Parallel Rollout Collection}
+  Instead of one environment, PPO commonly runs $N$ environments in parallel for
+  $T$ steps. This gives a batch of $N\cdot T$ transitions per iteration.
+
+  \vspace{0.4em}
+  \begin{center}
+  \begin{tikzpicture}[
+      cell/.style={rectangle, draw=tuwblue!65, rounded corners,
+                   minimum width=1.05cm, minimum height=0.5cm, font=\scriptsize},
+      label/.style={font=\scriptsize},
+      arrow/.style={-{Latex[length=1.6mm]}, thick, tuwblue!70}
+    ]
+    \foreach \row/\env in {0/1,1/2,2/\vdots,3/N} {
+      \node[label] at (-1.05,-\row*0.7) {env $\env$};
+      \node[cell] at (0,-\row*0.7) {$t$};
+      \node[cell] at (1.35,-\row*0.7) {$t+1$};
+      \node[cell] at (2.70,-\row*0.7) {$\cdots$};
+      \node[cell] at (4.35,-\row*0.7) {$t+T-1$};
+    }
+    \draw[arrow] (-0.1,0.55) -- (4.65,0.55) node[right,label] {$T$ steps};
+    \draw[arrow] (5.45,0.05) -- (5.45,-2.15) node[below, xshift=0.25cm, label] {$N$ envs};
+  \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.2em}
+  For each transition PPO stores:
+  \[
+    s_t,\; a_t,\; r_t,\; \text{done}_t,\; \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t),\; V_\phi(s_t)
+  \]
+\end{frame}
+
+\begin{frame}{Training Loop: From Rollout to Training Batch}
+  After rollout collection, the data is converted into supervised-style targets
+  for the actor and critic.
+
+  \vspace{0.5em}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Compute from rewards}\\[0.2em]
+      \begin{itemize}
+        \item bootstrap from $V_\phi(s_T)$ if needed
+        \item compute advantages $\hat{A}_t$ \newline using MC return or GAE
+        \item compute critic targets:
+          \[
+            V_t^{\mathrm{target}}=\hat{A}_t+V_\phi(s_t)
+          \]
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Flatten into a batch}\\[0.2em]
+      \begin{itemize}
+        \item rollout shape: $N\times T$
+        \item training batch size: $N\cdot T$
+        \item shuffle and split into mini-batches
+        \item optionally normalize $\hat{A}_t$ before updates
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Training Loop: Mini-batch Updates}
+  PPO does not update once on the whole rollout. It shuffles the rollout batch,
+  splits it into mini-batches, and performs several passes over the same data.
+
+  \vspace{0.5em}
+  \begin{center}
+  \begin{tikzpicture}[
+      scale=0.75,
+      transform shape,
+      box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                  minimum width=2.25cm, minimum height=0.75cm, align=center,
+                  font=\small},
+      sample/.style={rectangle, draw=tuwblue!60, fill=tuwblue!8,
+                     minimum width=0.42cm, minimum height=0.36cm},
+      mb/.style={rectangle, draw=tuwblue!70, thick, rounded corners,
+                 minimum width=1.35cm, minimum height=0.48cm, align=center,
+                 font=\scriptsize},
+      arrow/.style={-{Latex[length=1.8mm]}, thick, tuwblue!70},
+      label/.style={font=\scriptsize, align=center}
+    ]
+    \node[box] (rollout) at (0,0) {rollout batch\\$N\cdot T$ transitions};
+
+    \foreach \i/\x/\y in {1/3.00/0.28,2/3.65/0.28,3/4.30/0.28,4/4.95/0.28,
+                           5/3.00/-0.28,6/3.65/-0.28,7/4.30/-0.28,8/4.95/-0.28} {
+      \node[sample] at (\x,\y) {};
+    }
+    \node[label] (shuffle) at (3.98,-0.92) {shuffle};
+
+    \node[mb] (mb1) at (7.35,0.58) {mini-batch 1};
+    \node[mb] (mb2) at (7.35,0.00) {mini-batch 2};
+    \node[mb, draw=none] (mbdots) at (7.35,-0.58) {$\vdots$};
+    \node[mb] (mbB) at (7.35,-1.16) {mini-batch $B$};
+    \node[label] at (7.35,-1.78) {split};
+
+    \node[box] (adam) at (12.15,0) {Adam step\\update $\theta,\phi$};
+    \node[box] (repeat) at (15.45,0) {repeat\\$K$ epochs};
+
+    \draw[arrow] (rollout.east) -- node[above, label] {shuffle} (2.70,0);
+    \draw[arrow] (5.30,0) -- node[above, label] {split} (mb2.west);
+    \draw[arrow] (mb2.east) -- node[above, label] {one mini-batch\\= one step} (adam.west);
+    \draw[arrow] (adam.east) -- (repeat.west);
+    \draw[arrow, rounded corners]
+      (repeat.south) -- (15.45,-2.15)
+      -- node[below, label] {next mini-batch / epoch} (8.70,-2.15)
+      -- (8.70,-1.16) -- (mbB.east);
+  \end{tikzpicture}
+  \end{center}
+
+  \vspace{0.2em}
+  \begin{itemize}
+    \item One mini-batch gives one optimizer step
+    \item Reusing data improves sample efficiency
+    \item Clipping makes this reuse safer by limiting policy drift from
+          $\pi_{\theta_{\mathrm{old}}}$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Training Loop: PPO Updates}
+  The same rollout batch is reused for $K$ epochs, but the clipped objective keeps
+  the new policy close to the policy that collected the data.
+
+  \vspace{0.4em}
+  \begin{block}{For each epoch and mini-batch}
+    \begin{enumerate}
+      \item Recompute $\log\pi_\theta(a_t\mid s_t)$ and $V_\phi(s_t)$ with current networks
+      \item Form the ratio
+        \[
+          r_t(\theta)=\exp\!\left(\log\pi_\theta(a_t\mid s_t)
+          -\log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)\right)
+        \]
+      \item Optimize policy loss, value loss, and entropy bonus with Adam
+    \end{enumerate}
+  \end{block}
+
   \centering
-  This slide will show the PPO training loop as pseudocode: collect a rollout
-  of $T$ steps across $N$ parallel environments, compute advantages via GAE,
-  then run $K$ epochs of mini-batch updates over the collected data.
+  \small After the updates: $\theta_{\mathrm{old}}\leftarrow\theta$, collect a new rollout.
 \end{frame}
 
 \section{Experiment Setup}
