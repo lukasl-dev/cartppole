@@ -147,12 +147,62 @@
 \section{Proximal Policy Optimization}
 
 \subsection{Overview}
-\begin{frame}{Overview}
-  \centering
-  This slide will show the overall PPO structure: separate actor and critic
-  networks, how observations flow through each, and how the actor produces a
-  categorical action distribution while the critic produces a scalar value
-  estimate $V(s)$.
+\begin{frame}{Overview\footnote[frame]{Schulman et al., \emph{Proximal Policy Optimization Algorithms}, arXiv:1707.06347v2 (2017).}}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{PPO is an on-policy actor--critic method}
+      \vspace{0.5em}
+      \begin{itemize}
+        \item Alternate between \textbf{sampling} with the current policy and
+              \textbf{optimizing} a surrogate objective
+        \item \textbf{Actor} $\pi_\theta(a \mid s)$ chooses actions and is the
+              policy we improve
+        \item \textbf{Critic} $V_\phi(s)$ estimates state value, used to compute
+              advantages $\hat A_t$
+        \item Reuse each rollout for several mini-batch epochs, but keep the
+              new policy close to the old one
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.52\textwidth}
+      \centering
+      \begin{tikzpicture}[
+          scale=0.82,
+          transform shape,
+          box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                      minimum height=0.75cm,
+                      align=center, font=\small},
+          smallbox/.style={rectangle, draw=tuwblue!60, thick, rounded corners,
+                           minimum height=0.65cm,
+                           align=center, font=\scriptsize},
+          leftbox/.style={box, text width=2.75cm},
+          rightbox/.style={box, text width=3.05cm},
+          leftsmall/.style={smallbox, text width=2.75cm},
+          rightsmall/.style={smallbox, text width=3.05cm},
+          arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!70},
+          node distance=0.55cm and 1.35cm
+        ]
+        \node[leftbox] (actor) {Actor\\$\pi_{\theta_{\mathrm{old}}}(a\mid s)$};
+        \node[rightbox, right=of actor] (env) {Environment\\CartPole};
+        \node[rightsmall, below=of env] (rollout) {rollout data\\$s_t,a_t,r_t$\\$\log\pi_{\theta_{\mathrm{old}}}$};
+        \node[leftbox, below=of actor] (critic) {Critic\\$V_\phi(s)$};
+        \node[rightsmall, below=of rollout] (adv) {advantage\\estimates $\hat A_t$};
+        \node[leftsmall] (update) at (critic |- adv) {PPO update\\clipped surrogate};
+
+        \draw[arrow] (actor.east) -- node[midway, above=2pt, font=\scriptsize] {actions} (env.west);
+        \draw[arrow] (env.south) -- node[right, font=\scriptsize] {samples} (rollout.north);
+        \draw[arrow] (rollout.south) -- (adv.north);
+        \draw[arrow] (critic.east) -- node[midway, above=3pt, xshift=0.12cm, font=\scriptsize] {$V(s_t)$} (adv.west);
+        \draw[arrow] (adv.west) -- (update.east);
+        \draw[arrow] (update.north) -- node[left, font=\scriptsize] {fit $V$} (critic.south);
+        \draw[arrow, rounded corners] (update.west) -- ++(-0.45,0) |- node[left, font=\scriptsize] {$\theta\leftarrow$} (actor.west);
+      \end{tikzpicture}
+      \vspace{0.4em}
+
+      \small
+      ``Proximal'' means the update is restricted: PPO removes incentive for
+      probability ratios outside $[1-\epsilon,\,1+\epsilon]$.
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \subsection{Objective}
