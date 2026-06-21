@@ -11,6 +11,7 @@ jobs:
       contents: read
     outputs:
       report: ${{ steps.filter.outputs.report }}
+      presentation: ${{ steps.filter.outputs.presentation }}
       check: ${{ steps.filter.outputs.check }}
       docs: ${{ steps.filter.outputs.docs }}
     steps:
@@ -21,6 +22,11 @@ jobs:
           filters: |
             report:
               - 'report/**'
+              - 'flake.nix'
+              - 'flake.lock'
+              - '.github/workflows/ci.yaml'
+            presentation:
+              - 'presentation/**'
               - 'flake.nix'
               - 'flake.lock'
               - '.github/workflows/ci.yaml'
@@ -82,6 +88,32 @@ jobs:
         with:
           name: report
           path: result/report.pdf
+
+  presentation:
+    needs: changes
+    if: ${{ needs.changes.outputs.presentation == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: "write"
+      contents: "read"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - uses: ryanccn/attic-action@v0
+        with:
+          endpoint: "https://cache.lukasl.dev/"
+          cache: cartppole
+          token: "${{ secrets.CACHE_SECRET }}"
+
+      - name: Build presentation
+        run: nix build .#presentation --accept-flake-config
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: presentation
+          path: result/presentation.pdf
 
   docs:
     needs: changes
