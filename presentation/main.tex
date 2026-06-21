@@ -206,6 +206,47 @@
 \end{frame}
 
 
+\begin{frame}{PPO is Gradient-Based}
+  PPO does not directly search over actions. It changes the neural-network
+  parameters so that the policy distribution assigns better probabilities.
+
+  \vspace{0.5em}
+  \begin{block}{Optimization view}
+    \[
+      \theta,\phi
+      \leftarrow
+      \theta,\phi - \alpha\,\nabla_{\theta,\phi}\mathcal{L}^{\mathrm{PPO}}
+    \]
+  \end{block}
+
+  \vspace{0.2em}
+  \begin{center}
+  \begin{tikzpicture}[
+      box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                  minimum width=2.6cm, minimum height=0.75cm, align=center,
+                  font=\small},
+      arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!70},
+      node distance=0.55cm and 0.75cm
+    ]
+    \node[box] (batch) {rollout\\mini-batch};
+    \node[box, right=of batch] (loss) {PPO loss\\$\mathcal{L}^{\mathrm{PPO}}$};
+    \node[box, right=of loss] (grad) {backprop\\gradients};
+    \node[box, right=of grad] (adam) {Adam\\update};
+    \draw[arrow] (batch) -- (loss);
+    \draw[arrow] (loss) -- (grad);
+    \draw[arrow] (grad) -- (adam);
+  \end{tikzpicture}
+  \end{center}
+
+  \begin{itemize}
+    \item Actor parameters $\theta$: change action probabilities
+    \item Critic parameters $\phi$: improve value estimates
+    \item The PPO paper writes objectives to maximize; in code we minimize the
+          negative objective with Adam
+  \end{itemize}
+\end{frame}
+
+
 \subsection{Objective}
 \begin{frame}{Objective: Policy Loss}
   The actor is updated with the clipped surrogate objective from PPO.
