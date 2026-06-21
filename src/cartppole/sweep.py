@@ -1,5 +1,6 @@
 from itertools import product
 from pathlib import Path
+from statistics import fmean, pstdev
 from typing import NamedTuple
 
 import click
@@ -179,7 +180,26 @@ def checkpoint_for_sweep(
     )
 
 
-def markdown_table(results: list[SweepResult]) -> str:
+def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
+    widths = [
+        max(len(row[column]) for row in [headers, *rows])
+        for column in range(len(headers))
+    ]
+
+    def format_row(row: list[str]) -> str:
+        return (
+            "| "
+            + " | ".join(
+                cell.ljust(width) for cell, width in zip(row, widths, strict=True)
+            )
+            + " |"
+        )
+
+    separator = "| " + " | ".join("-" * width for width in widths) + " |"
+    return "\n".join([format_row(headers), separator, *map(format_row, rows)])
+
+
+def runs_table(results: list[SweepResult]) -> str:
     headers = [
         "run",
         "seed",
@@ -217,22 +237,85 @@ def markdown_table(results: list[SweepResult]) -> str:
         ]
         for result in results
     ]
-    widths = [
-        max(len(row[column]) for row in [headers, *rows])
-        for column in range(len(headers))
-    ]
+    return markdown_table(headers, rows)
 
-    def format_row(row: list[str]) -> str:
-        return (
-            "| "
-            + " | ".join(
-                cell.ljust(width) for cell, width in zip(row, widths, strict=True)
-            )
-            + " |"
+
+def summary_table(results: list[SweepResult]) -> str:
+    grouped: dict[
+        tuple[float, float, float, float, str, bool, str, float, float, int, int],
+        list[SweepResult],
+    ] = {}
+
+    for result in results:
+        key = (
+            result.clip_coef,
+            result.learning_rate,
+            result.value_coef,
+            result.entropy_coef,
+            result.advantage_estimator,
+            result.normalise_advantages,
+            result.policy_loss,
+            result.gae_lambda,
+            result.discount_factor,
+            result.n_steps,
+            result.update_epochs,
+        )
+        grouped.setdefault(key, []).append(result)
+
+    headers = [
+        "runs",
+        "seeds",
+        "clip",
+        "lr",
+        "vf",
+        "ent",
+        "adv",
+        "norm",
+        "policy",
+        "gae λ",
+        "γ",
+        "n_steps",
+        "epochs",
+        "return across seeds",
+        "success across seeds",
+    ]
+    rows: list[list[str]] = []
+    for (
+        clip_coef,
+        learning_rate,
+        value_coef,
+        entropy_coef,
+        advantage_estimator,
+        normalise_advantages,
+        policy_loss,
+        gae_lambda,
+        discount_factor,
+        n_steps,
+        update_epochs,
+    ), group in grouped.items():
+        returns = [result.return_mean for result in group]
+        success_rates = [result.success_rate for result in group]
+        rows.append(
+            [
+                str(len(group)),
+                ",".join(str(result.seed) for result in group),
+                str(clip_coef),
+                str(learning_rate),
+                str(value_coef),
+                str(entropy_coef),
+                advantage_estimator,
+                str(normalise_advantages),
+                policy_loss,
+                str(gae_lambda),
+                str(discount_factor),
+                str(n_steps),
+                str(update_epochs),
+                f"{fmean(returns):.1f} ± {pstdev(returns):.1f}",
+                f"{fmean(success_rates):.2f} ± {pstdev(success_rates):.2f}",
+            ]
         )
 
-    separator = "| " + " | ".join("-" * width for width in widths) + " |"
-    return "\n".join([format_row(headers), separator, *map(format_row, rows)])
+    return markdown_table(headers, rows)
 
 
 @click.command()
@@ -541,9 +624,11 @@ def sweep(
         finally:
             run.close()
 
-    title = "Sweep runs" if sweep_name is None else f"Sweep runs: {sweep_name}"
-    click.echo(f"\n## {title}")
-    click.echo(markdown_table(results))
+    title = "Sweep" if sweep_name is None else f"Sweep: {sweep_name}"
+    click.echo(f"\n## {title} summary across seeds")
+    click.echo(summary_table(results))
+    click.echo(f"\n## {title} runs")
+    click.echo(runs_table(results))
     return results
 
 
