@@ -205,10 +205,73 @@
   \end{columns}
 \end{frame}
 
+
 \subsection{Objective}
-\begin{frame}{Objective}
-  \centering
-  This slide will present the combined PPO loss (math), concepts used in there (advantage/clipping) will be explained in the followign slides.
+\begin{frame}{Objective: Policy Loss}
+  The actor is updated with the clipped surrogate objective from PPO.
+
+  \vspace{0.6em}
+  \begin{block}{Clipped policy objective}
+    \begin{align*}
+      L_t^{\mathrm{CLIP}}(\theta)
+      &= \min\!\left(
+          r_t(\theta)\hat A_t,
+          \operatorname{clip}\bigl(r_t(\theta), 1-\epsilon, 1+\epsilon\bigr)\hat A_t
+        \right) \\
+      r_t(\theta)
+      &= \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)}
+    \end{align*}
+  \end{block}
+
+  \begin{itemize}
+    \item $r_t(\theta)$ compares the new policy to the policy that collected the rollout
+    \item $\hat{A}_t$ tells whether the sampled action was better or worse than expected
+    \item Clipping removes incentive for overly large policy changes
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Objective: Value Loss}
+  The critic is trained as a regression problem: predict the return target for
+  each sampled state.
+
+  \vspace{0.6em}
+  \begin{block}{Value-function loss}
+    \begin{align*}
+      L_t^{\mathrm{VF}}(\phi)
+      &= \left(V_\phi(s_t) - V_t^{\mathrm{target}}\right)^2
+    \end{align*}
+  \end{block}
+
+  \begin{itemize}
+    \item $V_\phi(s_t)$ estimates how much return is expected from state $s_t$
+    \item $V_t^{\mathrm{target}}$ is computed from rollout rewards and bootstrapping
+    \item A better critic gives better advantage estimates and reduces update variance
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Objective: Entropy Bonus}
+  PPO also rewards stochastic policies to avoid collapsing to one action too
+  early.
+
+  \vspace{0.6em}
+  \begin{block}{Entropy bonus}
+    \begin{align*}
+      S[\pi_\theta](s_t)
+      &= -\sum_a \pi_\theta(a\mid s_t)\log \pi_\theta(a\mid s_t)
+    \end{align*}
+  \end{block}
+
+  \vspace{0.4em}
+  \begin{block}{Combined objective}
+    \vspace{-0.4em}
+    \[
+      L_t^{\mathrm{PPO}}(\theta, \phi)
+      = L_t^{\mathrm{CLIP}}(\theta)
+        - c_1 L_t^{\mathrm{VF}}(\phi)
+        + c_2 S[\pi_\theta](s_t)
+    \]
+    \vspace{-0.8em}
+  \end{block}
 \end{frame}
 
 \subsection{Advantage Estimation}
