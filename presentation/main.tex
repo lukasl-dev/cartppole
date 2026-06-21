@@ -158,7 +158,7 @@
         \item \textbf{Actor} $\pi_\theta(a \mid s)$ chooses actions and is the
               policy we improve
         \item \textbf{Critic} $V_\phi(s)$ estimates state value, used to compute
-              advantages $\hat A_t$
+              advantages $\hat{A}_t$
         \item Reuse each rollout for several mini-batch epochs, but keep the
               new policy close to the old one
       \end{itemize}
@@ -185,7 +185,7 @@
         \node[rightbox, right=of actor] (env) {Environment\\CartPole};
         \node[rightsmall, below=of env] (rollout) {rollout data\\$s_t,a_t,r_t$\\$\log\pi_{\theta_{\mathrm{old}}}$};
         \node[leftbox, below=of actor] (critic) {Critic\\$V_\phi(s)$};
-        \node[rightsmall, below=of rollout] (adv) {advantage\\estimates $\hat A_t$};
+        \node[rightsmall, below=of rollout] (adv) {advantage\\estimates $\hat{A}_t$};
         \node[leftsmall] (update) at (critic |- adv) {PPO update\\clipped surrogate};
 
         \draw[arrow] (actor.east) -- node[midway, above=2pt, font=\scriptsize] {actions} (env.west);
@@ -215,8 +215,8 @@
     \begin{align*}
       L_t^{\mathrm{CLIP}}(\theta)
       &= \min\!\left(
-          r_t(\theta)\hat A_t,
-          \operatorname{clip}\bigl(r_t(\theta), 1-\epsilon, 1+\epsilon\bigr)\hat A_t
+          r_t(\theta)\hat{A}_t,
+          \operatorname{clip}\bigl(r_t(\theta), 1-\epsilon, 1+\epsilon\bigr)\hat{A}_t
         \right) \\
       r_t(\theta)
       &= \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)}
@@ -274,10 +274,165 @@
   \end{block}
 \end{frame}
 
+
 \subsection{Advantage Estimation}
-\begin{frame}{Advantage Estimation}
+\begin{frame}{Advantage Estimation: Why Advantages?}
+  The policy loss needs a signal for whether the sampled action was good.
+  Instead of using raw return, PPO uses an \textbf{advantage estimate}:
+
+  \vspace{0.4em}
+  \begin{block}{General idea}
+    \[
+      \hat{A}_t \approx
+      \underbrace{\widehat{Q}_t}_{\text{rollout estimate}}
+      -
+      \underbrace{V_\phi(s_t)}_{\text{critic baseline}}
+    \]
+  \end{block}
+
+  \begin{itemize}
+    \item $\widehat{Q}_t$: estimated from rewards after taking $a_t$ in the rollout
+    \item $V_\phi(s_t)$: critic's baseline expectation for state $s_t$
+    \item $\hat{A}_t > 0$: action was better than expected $\Rightarrow$ make it more likely
+    \item $\hat{A}_t < 0$: action was worse than expected $\Rightarrow$ make it less likely
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Advantage Estimation: Rollout Return}
+  A direct estimate compares a discounted rollout return with the critic's
+  current value estimate.
+
+  \vspace{0.5em}
+  \begin{block}{Truncated Monte-Carlo-style estimate}
+    \begin{align*}
+      G_t &= \sum_{l=0}^{T-t-1} \gamma^l r_{t+l}
+             + \gamma^{T-t} V_\phi(s_T) \\
+      \hat{A}_t &= G_t - V_\phi(s_t)
+    \end{align*}
+  \end{block}
+
+  \begin{itemize}
+    \item $t$ is the current position in a rollout segment of length $T$
+    \item $l=0,\ldots,T-t-1$ iterates over future rewards
+          $r_t, r_{t+1}, \ldots, r_{T-1}$
+    \item Uses real rewards from the sampled trajectory segment
+    \item Bootstraps with $V_\phi(s_T)$ because PPO uses fixed-length rollouts
+    \item Often low bias, but can have high variance
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Advantage Estimation: Bootstrapping}
+  \small
+  A rollout can stop because we reached the fixed segment length, even if the
+  episode is not finished. Then the future after $s_T$ is unobserved.
+
+  \vspace{0.5em}
   \centering
-  This slide will explain how $A_t$ is computed. Explain Monte-Carlo Returns and GAE and compare them
+  \begin{tikzpicture}[
+      state/.style={circle, draw=tuwblue!80, thick, minimum size=0.72cm, font=\scriptsize},
+      reward/.style={rectangle, draw=tuwblue!60, rounded corners, minimum width=0.65cm,
+                     minimum height=0.45cm, font=\scriptsize},
+      arrow/.style={-{Latex[length=1.6mm]}, thick, tuwblue!70},
+      node distance=0.45cm
+    ]
+    \node[state] (st) {$s_t$};
+    \node[reward, right=of st] (rt) {$r_t$};
+    \node[state, right=of rt] (st1) {$s_{t+1}$};
+    \node[right=0.25cm of st1] (dots) {$\cdots$};
+    \node[reward, right=0.25cm of dots] (rT) {$r_{T-1}$};
+    \node[state, right=of rT] (sT) {$s_T$};
+    \node[reward, right=0.85cm of sT, dashed, draw=failred!70] (future) {$?$};
+    \node[below=0.25cm of future, font=\scriptsize, text=failred] {unobserved future};
+    \node[reward, below=0.72cm of sT, draw=successgreen!80, text width=1.35cm,
+          align=center] (boot) {$V_\phi(s_T)$};
+
+    \draw[arrow] (st) -- (rt);
+    \draw[arrow] (rt) -- (st1);
+    \draw[arrow] (st1) -- (dots);
+    \draw[arrow] (dots) -- (rT);
+    \draw[arrow] (rT) -- (sT);
+    \draw[arrow, dashed, failred!70] (sT) -- (future);
+    \draw[arrow, successgreen!80] (sT) -- (boot);
+  \end{tikzpicture}
+
+  \vspace{0.4em}
+  \begin{block}{Replace the unknown tail by the critic's estimate}
+    \[
+      G_t = \underbrace{r_t + \gamma r_{t+1} + \cdots + \gamma^{T-t-1} r_{T-1}}_{\text{observed rewards}}
+            + \gamma^{T-t}\underbrace{V_\phi(s_T)}_{\text{estimated future}}
+    \]
+  \end{block}
+
+  \vspace{-0.2em}
+  \begin{itemize}
+    \item This replacement is called \textbf{bootstrapping}
+    \item If $s_T$ is terminal, the estimated future is $0$
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Advantage Estimation: GAE}
+  Generalized Advantage Estimation (GAE) smooths many temporal-difference errors
+  into one advantage estimate.
+
+  \vspace{0.5em}
+  \begin{block}{GAE estimate}
+    \begin{align*}
+      \delta_t &= r_t + \gamma V(s_{t+1}) - V(s_t) \\
+      \hat{A}_t^{\mathrm{GAE}}
+      &= \sum_{l=0}^{T-t-1} (\gamma\lambda)^l \delta_{t+l}
+    \end{align*}
+  \end{block}
+
+  \begin{itemize}
+    \item The sum again iterates over future offsets
+          $l=0,\ldots,T-t-1$ inside the rollout
+    \item $\delta_t$ measures one-step surprise relative to the critic
+    \item $\lambda$ controls how far future TD errors influence $\hat{A}_t$
+    \item Lower $\lambda$: lower variance; higher $\lambda$: lower bias
+  \end{itemize}
+
+  \vspace{0.2em}
+  \centering
+  \footnotesize Critic target used later: $V_t^{\mathrm{target}}=\hat{A}_t+V(s_t)$.
+\end{frame}
+
+\begin{frame}{Advantage Estimation: What Does $\lambda$ Do?}
+  In GAE, $\lambda$ controls how much we trust short-term critic estimates
+  versus longer rollout returns.
+
+  \vspace{0.5em}
+  \begin{block}{Future TD errors are exponentially weighted}
+    \[
+      \hat{A}_t^{\mathrm{GAE}}
+      = \delta_t
+        + (\gamma\lambda)\delta_{t+1}
+        + (\gamma\lambda)^2\delta_{t+2}
+        + \cdots
+    \]
+  \end{block}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Small $\lambda$}\\[0.2em]
+      \begin{itemize}
+        \item mostly one-step TD errors
+        \item relies more on critic predictions
+        \item lower variance, more bias
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \textbf{Large $\lambda$}\\[0.2em]
+      \begin{itemize}
+        \item includes more future rewards
+        \item closer to Monte-Carlo return
+        \item lower bias, more variance
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.3em}
+  \centering
+  \small $\lambda=0$: one-step TD estimate \qquad $\lambda=1$: rollout-return-like estimate
 \end{frame}
 
 \subsection{Clipped vs.\ Unclipped Objective}
