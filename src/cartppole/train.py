@@ -166,6 +166,52 @@ def normalise_advantage_values(
     return (adv - adv.mean()) / (adv.std() + 1e-8)
 
 
+def evaluate_current_policy(
+    policy: Policy,
+    env_id: str,
+    success_threshold: float,
+    n_episodes: int,
+    seed: int,
+    deterministic: bool,
+) -> tuple[float, float, float]:
+    """Evaluate the current policy without touching the training environments."""
+    env = Environment(id=env_id, n_envs=1)
+    was_training = policy.training
+    policy.eval()
+    episode_returns: list[float] = []
+
+    try:
+        for episode in range(n_episodes):
+            reset = env.reset(seed=seed + episode)
+            obs = tensor(reset.obs, dtype=torch.float32)
+            total_reward = 0.0
+
+            while True:
+                with no_grad():
+                    out = policy.get_action_and_value(
+                        obs,
+                        deterministic=deterministic,
+                    )
+
+                step = env.step(out.action.numpy())
+                total_reward += float(step.reward[0])
+                obs = tensor(step.obs, dtype=torch.float32)
+
+                if bool(step.done[0]):
+                    episode_returns.append(total_reward)
+                    break
+    finally:
+        env.close()
+        policy.train(was_training)
+
+    returns = np.array(episode_returns)
+    return (
+        float(np.mean(returns)),
+        float(np.std(returns)),
+        float(np.mean(returns >= success_threshold)),
+    )
+
+
 def probability_ratio(
     log_prob: Annotated[Tensor, "batch_size"],
     old_log_prob: Annotated[Tensor, "batch_size"],
@@ -290,6 +336,10 @@ def train(
     policy_loss: str = PolicyLoss.clipped,
     discount_factor: float = 0.99,
     gae_lambda: float = 0.95,
+    eval_interval: int | None = None,
+    n_eval_episodes: int = 20,
+    eval_seed: int = 10_000,
+    deterministic_eval: bool = False,
 ) -> Run:
     params = locals().copy()
 
@@ -321,12 +371,27 @@ def train(
     current_ep_return = zeros(n_envs)
     current_ep_length = zeros(n_envs, dtype=torch.long)
 
+    if eval_interval is not None:
+        eval_return_mean, eval_return_std, eval_success_rate = evaluate_current_policy(
+            policy=policy,
+            env_id=env_id,
+            success_threshold=475,
+            n_episodes=n_eval_episodes,
+            seed=eval_seed,
+            deterministic=deterministic_eval,
+        )
+        run.track(eval_return_mean, name=Metric.eval_return_mean, step=0)
+        run.track(eval_return_std, name=Metric.eval_return_std, step=0)
+        run.track(eval_success_rate, name=Metric.eval_success_rate, step=0)
+
     for update in range(n_updates):
         if update % progress_interval == 0 or update == n_updates - 1:
             click.echo(
                 f"\rRunning update {update + 1}/{n_updates}", nl=update == n_updates - 1
             )
 
+        current_ep_return.zero_()
+        current_ep_length.zero_()
         roll: Rollout = rollout(
             seed=seed + update,
             n_steps=n_steps,
@@ -477,6 +542,23 @@ def train(
                     step=update_step,
                 )
 
+        if eval_interval is not None and (
+            (update + 1) % eval_interval == 0 or update == n_updates - 1
+        ):
+            eval_return_mean, eval_return_std, eval_success_rate = (
+                evaluate_current_policy(
+                    policy=policy,
+                    env_id=env_id,
+                    success_threshold=475,
+                    n_episodes=n_eval_episodes,
+                    seed=eval_seed,
+                    deterministic=deterministic_eval,
+                )
+            )
+            run.track(eval_return_mean, name=Metric.eval_return_mean, step=update + 1)
+            run.track(eval_return_std, name=Metric.eval_return_std, step=update + 1)
+            run.track(eval_success_rate, name=Metric.eval_success_rate, step=update + 1)
+
     env.close()
 
     checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
@@ -537,7 +619,7 @@ def train(
 )
 @click.option(
     "--normalise-advantages/--no-normalise-advantages",
-    default=True,
+    default=False,
     show_default=True,
     help="Whether to normalise advantages before PPO updates.",
 )
@@ -556,6 +638,20 @@ def train(
     show_default=True,
     type=float,
     help="Lambda parameter for Generalised Advantage Estimation.",
+)
+@click.option(
+    "--eval-interval",
+    default=None,
+    type=int,
+    help="Evaluate every N PPO updates during training.",
+)
+@click.option("--n-eval-episodes", default=20, show_default=True, type=int)
+@click.option("--eval-seed", default=10_000, show_default=True, type=int)
+@click.option(
+    "--deterministic-eval/--stochastic-eval",
+    default=True,
+    show_default=True,
+    help="Use greedy actions for periodic training evaluations.",
 )
 def train_cli(
     env_id: str = "CartPole-v1",
@@ -577,6 +673,10 @@ def train_cli(
     policy_loss: str = PolicyLoss.clipped,
     discount_factor: float = 0.99,
     gae_lambda: float = 0.95,
+    eval_interval: int | None = None,
+    n_eval_episodes: int = 20,
+    eval_seed: int = 10_000,
+    deterministic_eval: bool = False,
 ) -> Run:
     return train(
         env_id=env_id,
@@ -598,6 +698,10 @@ def train_cli(
         policy_loss=policy_loss,
         discount_factor=discount_factor,
         gae_lambda=gae_lambda,
+        eval_interval=eval_interval,
+        n_eval_episodes=n_eval_episodes,
+        eval_seed=eval_seed,
+        deterministic_eval=deterministic_eval,
     )
 
 

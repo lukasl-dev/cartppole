@@ -28,6 +28,7 @@ def evaluate(
     success_threshold: float = 475,
     n_episodes: int = 60,
     seed: int = 0,
+    deterministic: bool = False,
 ) -> EvaluationResult:
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
@@ -50,7 +51,7 @@ def evaluate(
 
             while True:
                 with no_grad():
-                    out = policy.get_action_and_value(obs)
+                    out = policy.get_action_and_value(obs, deterministic=deterministic)
 
                 step = env.step(out.action.numpy())
                 total_reward += float(step.reward[0])
@@ -94,12 +95,19 @@ def evaluate(
 @click.option("--success-threshold", default=475.0, show_default=True, type=float)
 @click.option("--n-episodes", default=60, show_default=True, type=int)
 @click.option("--seed", default=0, show_default=True, type=int)
+@click.option(
+    "--deterministic/--stochastic",
+    default=False,
+    show_default=True,
+    help="Use greedy actions during evaluation instead of sampling.",
+)
 def evaluate_cli(
     env_id: str = "CartPole-v1",
     checkpoint_path: Path = Path("checkpoints/policy.pt"),
     success_threshold: float = 475,
     n_episodes: int = 60,
     seed: int = 0,
+    deterministic: bool = False,
 ) -> None:
     result = evaluate(
         env_id=env_id,
@@ -107,6 +115,7 @@ def evaluate_cli(
         success_threshold=success_threshold,
         n_episodes=n_episodes,
         seed=seed,
+        deterministic=deterministic,
     )
     click.echo(f"{'checkpoint:':<24}{result.checkpoint_path}")
     click.echo(f"{'episodes:':<24}{result.n_episodes}")

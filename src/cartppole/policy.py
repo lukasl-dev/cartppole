@@ -64,13 +64,16 @@ class Policy(Module):
         self,
         obs: Annotated[Tensor, "batch_size obs_dim"],
         action: Annotated[Tensor, "batch_size"] | None = None,
+        deterministic: bool = False,
     ) -> PolicyOutput:
         """Sample or evaluate actions and compute critic values.
 
         The actor produces one logit per action. These logits define a
         categorical distribution over discrete actions. If ``action`` is
-        ``None``, an action is sampled from that distribution. If ``action`` is
-        provided, that existing action is evaluated under the current policy.
+        ``None``, an action is sampled from that distribution. For evaluation,
+        ``deterministic=True`` selects the most likely action instead. If
+        ``action`` is provided, that existing action is evaluated under the
+        current policy.
 
         PPO needs both modes: sampling actions while collecting rollouts, and
         recomputing log-probabilities for stored actions during the update.
@@ -78,6 +81,7 @@ class Policy(Module):
         Args:
             obs: Batch of observations.
             action: Optional batch of discrete actions.
+            deterministic: Whether to select greedy actions instead of sampling.
 
         Returns:
             The action, its log-probability, the distribution entropy, and the
@@ -87,7 +91,7 @@ class Policy(Module):
         dist = Categorical(logits=logits)
 
         if action is None:
-            action = dist.sample()
+            action = logits.argmax(dim=-1) if deterministic else dist.sample()
 
         log_prob = dist.log_prob(action)
         entropy = dist.entropy()
