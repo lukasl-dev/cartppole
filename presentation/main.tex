@@ -11,12 +11,16 @@
 \definecolor{tuwgray}{RGB}{128,128,128}
 \definecolor{successgreen}{RGB}{34,139,34}
 \definecolor{failred}{RGB}{178,34,34}
+\definecolor{valueorange}{RGB}{230,126,34}
+\definecolor{policyviolet}{RGB}{117,80,123}
 
 % Custom colors
 \definecolor{tuwblue}{RGB}{0,102,153}
 \definecolor{tuwgray}{RGB}{128,128,128}
 \definecolor{successgreen}{RGB}{34,139,34}
 \definecolor{failred}{RGB}{178,34,34}
+\definecolor{valueorange}{RGB}{230,126,34}
+\definecolor{policyviolet}{RGB}{117,80,123}
 
 \setbeamercolor{title}{fg=white,bg=tuwblue}
 \setbeamercolor{frametitle}{fg=white}
@@ -914,9 +918,78 @@
   \end{tikzpicture}
 \end{frame}
 
-\begin{frame}{Results}
+\begin{frame}{Results: Learning Progress}
+  \begin{columns}[T]
+    \begin{column}{0.68\textwidth}
+      \centering
+      \begin{tikzpicture}[x=1cm,y=1cm]
+        \def\plotw{8.8}
+        \def\ploth{4.8}
+        \def\threshold{4.385}
+
+        \foreach \x/\lab in {0/0,1.80/100,3.61/200,5.41/300,7.21/400} {
+          \draw[tuwgray!18] (\x,0) -- (\x,\ploth);
+          \node[font=\scriptsize, below] at (\x,0) {\lab};
+        }
+        \foreach \y/\lab in {0/0,0.92/100,1.85/200,2.77/300,3.69/400,4.62/500} {
+          \draw[tuwgray!18] (0,\y) -- (\plotw,\y);
+          \node[font=\scriptsize, left] at (0,\y) {\lab};
+        }
+
+        \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
+          node[below, font=\scriptsize] {PPO update};
+        \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
+          node[above, font=\scriptsize] {evaluation return};
+
+        \draw[successgreen, dashed, thick] (0,\threshold) -- (\plotw,\threshold);
+        \node[anchor=south east, font=\scriptsize, text=successgreen]
+          at (\plotw,\threshold) {solved threshold};
+
+        \input{assets/eval_return_1m_tikz.tex}
+
+        \draw[tuwblue!28, line width=1pt] (0.25,4.55) -- (0.65,4.55);
+        \node[anchor=west, font=\scriptsize] at (0.72,4.55) {periodic eval.};
+        \draw[tuwblue, very thick] (0.25,4.30) -- (0.65,4.30);
+        \node[anchor=west, font=\scriptsize] at (0.72,4.30) {moving average};
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.30\textwidth}
+      \small
+      \textbf{1M-timestep ablation run}\\[0.4em]
+      \begin{itemize}
+        \item Same selected configuration as the Makefile ablation
+        \item Periodic stochastic evaluation during training
+        \item Final $60$ episodes: $500.0 \pm 0.0$, $100\%$ success
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Results: Loss}
   \centering
-  This slide will present the training curves and final performance of PPO on CartPole.
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \def\plotw{11.1}
+    \def\ploth{5.15}
+
+    \foreach \x/\lab in {0/0,3.56/5k,7.11/10k,10.67/15k} {
+      \draw[tuwgray!18] (\x,0) -- (\x,\ploth);
+      \node[font=\scriptsize, below] at (\x,0) {\lab};
+    }
+    \foreach \y/\lab in {0/0,1.72/20,3.43/40,5.15/60} {
+      \draw[tuwgray!18] (0,\y) -- (\plotw,\y);
+      \node[font=\scriptsize, left] at (0,\y) {\lab};
+    }
+
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
+      node[below, font=\scriptsize] {optimizer step};
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
+      node[above, font=\scriptsize] {loss};
+
+    \input{assets/losses_1m_tikz.tex}
+  \end{tikzpicture}
+
+  \vspace{0.2em}
+  {\scriptsize Smoothed for readability.}
 \end{frame}
 
 \end{document}
