@@ -942,7 +942,7 @@
           node[above, font=\scriptsize] {evaluation return};
 
         \draw[successgreen, dashed, thick] (0,\threshold) -- (\plotw,\threshold);
-        \node[anchor=south east, font=\scriptsize, text=successgreen]
+        \node[anchor=north east, font=\scriptsize, text=successgreen, yshift=-0.15em]
           at (\plotw,\threshold) {solved threshold};
 
         \input{assets/eval_return_1m_tikz.tex}
@@ -981,7 +981,7 @@
     }
 
     \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
-      node[below, font=\scriptsize] {optimizer step};
+      node[below, font=\scriptsize, xshift=0.55cm] {optimizer step};
     \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
       node[above, font=\scriptsize] {loss};
 
