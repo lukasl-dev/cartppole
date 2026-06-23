@@ -142,12 +142,6 @@
   \end{columns}
 \end{frame}
 
-\subsection{Reinforcement Learning and PPO}
-\begin{frame}{Reinforcement Learning and PPO}
-  \centering
-  This slide will explain where in the Reinforcement Learning Process PPO fits in.
-\end{frame}
-
 \section{Proximal Policy Optimization}
 
 \subsection{Overview}
@@ -769,48 +763,57 @@
   \end{columns}
 \end{frame}
 
+
 \subsection{Hyperparameter Sweep}
 \begin{frame}{Hyperparameter Sweep}
+  \small
   Grid search over three dimensions --- all other parameters fixed.
-  \vspace{0.6em}
-  \begin{columns}[T]
-    \begin{column}{0.58\textwidth}
-      \textbf{Varied across runs}\\[0.4em]
-      \begin{tabular}{ll}
-        \toprule
-        Dimension & Values \\
-        \midrule
-        Policy loss
-          & unclipped \\
-          & clipped $\epsilon \in \{0.1,\, 0.2,\, 0.3\}$ \\[0.3em]
-        Advantage estimator
-          & Monte Carlo \\
-          & GAE $\lambda \in \{0.90,\, 0.95,\, 0.97\}$ \\[0.3em]
-        Rollout / update ratio
-          & $(\text{rollout length},\, \text{epochs})$ pairs \\
-          & $\in \{(128, 4), (256, 4), (128, 8)\}$ \\
-        \bottomrule
-      \end{tabular}
+
+  \vspace{0.5em}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \textbf{Varied across runs}\\[0.35em]
+      \begin{itemize}
+        \setlength\itemsep{0.55em}
+        \item \textbf{Clip range}\quad
+          $\epsilon \in \{0.1,\,0.2,\,0.3\}$
+        \item \textbf{Advantage estimator}\quad
+          Monte Carlo;\quad GAE $\lambda \in \{0.90,\,0.95,\,0.97\}$
+        \item \textbf{Rollout / update ratio}\quad
+          $(\text{rollout length},\text{epochs})$ pairs:\\[0.15em]
+          \hspace*{1.2em}$64{:}4,\;128{:}4,\;256{:}4,\;128{:}8$
+      \end{itemize}
     \end{column}
+
+    \hspace*{0.03\textwidth}
     \begin{column}{0.42\textwidth}
-      \textbf{Fixed}\\[0.4em]
-      \begin{tabular}{lc}
+      \textbf{Fixed}\\[0.25em]
+      {\tiny
+      \renewcommand{\arraystretch}{1.12}
+      \begin{tabular}{@{}ll@{}}
         \toprule
         Parameter & Value \\
         \midrule
-        Learning rate $\alpha$ & $2.5 \times 10^{-4}$ \\
+        Seeds & $0,1,2,3407$ \\
+        Timesteps & $1\mathrm{M}$ \\
+        Policy loss & clipped \\
+        Learning rate $\alpha$ & $2.5\times10^{-4}$ \\
         Discount factor $\gamma$ & $0.99$ \\
         Value coef.\ $c_1$ & $0.5$ \\
         Entropy coef.\ $c_2$ & $0.01$ \\
+        Normalise adv. & true \\
         Parallel envs $N$ & $8$ \\
         Mini-batch size & $256$ \\
+        Eval episodes & $60$ \\
+        Success threshold & $475$ \\
         \bottomrule
       \end{tabular}
+      }
     \end{column}
   \end{columns}
-  \vspace{0.5em}
-  \small Also evaluated across training set sizes:
-  $1\text{K},\; 10\text{K},\; 100\text{K},\; 500\text{K},\; 1\text{M},\; 5\text{M}$ timesteps.
+
+  \vspace{0.45em}
+  {\scriptsize Reported ablation results use a $1\mathrm{M}$-step training budget.}
 \end{frame}
 
 \subsection{Evaluation Metrics}
@@ -853,7 +856,8 @@
     \end{minipage}%
     \hspace*{\fill}%
     \begin{minipage}[t]{0.34\textwidth}\vspace{0pt}
-      \textbf{Advantage estimator}\par\vspace{0.2em}
+      \textbf{Advantage estimator}\par
+      {\tiny fixed rollout $128{:}4$}\par\vspace{0.2em}
       {\raggedright\tiny\setlength{\tabcolsep}{2pt}\renewcommand{\arraystretch}{1.15}%
       \begin{tabular}{@{}ccc@{}}
         \toprule
@@ -868,7 +872,7 @@
       }
 
       \vspace{0.5em}
-      \textcolor{successgreen}{GAE beats MC in the final run}
+      \textcolor{successgreen}{GAE more reliable than MC in this sweep}
     \end{minipage}%
     \hspace*{\fill}%
     \begin{minipage}[t]{0.31\textwidth}\vspace{0pt}
@@ -915,6 +919,57 @@
     \node[card] (roll) at (1.50,0) {longer rollout\\$256{:}4$};
     \node[result] (res) at (4.85,0) {SOLVED\\$500.0\pm0.0$ return\\$100\%$ success};
     \draw[arrow] (roll.east) -- (res.west);
+  \end{tikzpicture}
+\end{frame}
+
+
+
+\begin{frame}{Results: Sample Efficiency}
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,
+    labelbox/.style={rounded corners=2pt, inner sep=4pt, align=center,
+      font=\small},
+    metric/.style={draw=tuwgray!45, fill=tuwgray!5, rounded corners=2pt,
+      inner sep=4pt, align=center, font=\scriptsize}
+  ]
+    \def\barw{8.6}
+    \def\barh{0.42}
+    \def\stablex{4.64}  % 0.54M / 1.0M * 8.6
+
+    % GAE row.
+    \node[font=\bfseries, anchor=east, text=successgreen!65!black]
+      at (-5.25,1.25) {GAE};
+    \draw[fill=tuwgray!12, draw=tuwgray!45, rounded corners=2pt]
+      (-4.95,1.04) rectangle ++(\barw,\barh);
+    \draw[fill=successgreen!35, draw=successgreen!65!black, rounded corners=2pt]
+      (-4.95,1.04) rectangle ++(\stablex,\barh);
+    \draw[successgreen!65!black, line width=1.2pt]
+      (-4.95+\stablex,0.92) -- ++(0,0.70);
+    \node[labelbox, draw=successgreen!65!black, fill=successgreen!9, anchor=south]
+      at (-4.95+\stablex,1.78) {stable solved\\\textbf{$0.54$M steps}};
+
+    % MC row.
+    \node[font=\bfseries, anchor=east, text=failred!85!black]
+      at (-5.25,0.05) {MC};
+    \draw[fill=failred!10, draw=failred!45, rounded corners=2pt]
+      (-4.95,-0.16) rectangle ++(\barw,\barh);
+    \draw[failred!80!black, line width=1.2pt]
+      (3.65,-0.28) -- ++(0,0.70);
+    \node[labelbox, draw=failred!80!black, fill=failred!7, anchor=south]
+      at (3.65,0.58) {not solved after\\\textbf{$1.0$M steps}};
+
+    % Shared axis.
+    \foreach \x/\lab in {-4.95/$0$, -0.65/$0.5$M, 3.65/$1.0$M} {
+      \draw[tuwgray!45] (\x,-0.45) -- (\x,-0.34);
+      \node[font=\scriptsize, below] at (\x,-0.45) {\lab};
+    }
+    \node[font=\scriptsize, below] at (-0.65,-0.88) {environment steps};
+
+    % Endpoint metrics.
+    \node[metric, draw=successgreen!55!black, fill=successgreen!8]
+      at (-3.55,-1.65) {GAE selected run\\\textbf{$500.0\pm0.0$}\\$100\%$ success};
+    \node[metric, draw=failred!70!black, fill=failred!6]
+      at (2.85,-1.65) {MC selected run\\\textbf{$360.8\pm126.2$}\\$25\%$ success};
   \end{tikzpicture}
 \end{frame}
 
@@ -1018,6 +1073,27 @@
 
     \input{assets/losses_1m_tikz.tex}
   \end{tikzpicture}
+\end{frame}
+
+
+\begin{frame}{Experiment Tracking: Aim Dashboard}
+  \centering
+  \small
+  \textbf{All training runs were logged and compared in Aim}\\[0.6em]
+
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.49\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{assets/aim_dashboard_eval.png}\\[-0.1em]
+    \end{column}
+    \begin{column}{0.49\textwidth}
+      \centering
+      \includegraphics[width=\linewidth]{assets/aim_dashboard_loss.png}\\[-0.1em]
+    \end{column}
+  \end{columns}
+
+  \vspace{0.45em}
+  {\scriptsize Aim made it easier to compare ablations, debug suspicious metrics, and visualize plots}
 \end{frame}
 
 \end{document}
