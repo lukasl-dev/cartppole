@@ -926,8 +926,12 @@
         \def\plotw{8.8}
         \def\ploth{4.8}
         \def\threshold{4.385}
+        \def\solvedx{3.90}
+        \def\solvedy{4.62}
+        \def\stablex{4.76}
+        \def\stabley{4.62}
 
-        \foreach \x/\lab in {0/0,1.80/100,3.61/200,5.41/300,7.21/400} {
+        \foreach \x/\lab in {0/0,2.20/.25M,4.40/.50M,6.60/.75M,8.80/1.0M} {
           \draw[tuwgray!18] (\x,0) -- (\x,\ploth);
           \node[font=\scriptsize, below] at (\x,0) {\lab};
         }
@@ -937,7 +941,7 @@
         }
 
         \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
-          node[below, font=\scriptsize] {PPO update};
+          node[below, font=\scriptsize] {environment steps};
         \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
           node[above, font=\scriptsize] {evaluation return};
 
@@ -945,7 +949,32 @@
         \node[anchor=north east, font=\scriptsize, text=successgreen, yshift=-0.15em]
           at (\plotw,\threshold) {solved threshold};
 
+        \coordinate (solvedpt) at (\solvedx,\solvedy);
+        \draw[successgreen!70!black, dashed, line width=1.2pt]
+          (\solvedx,0) -- (solvedpt);
+        \coordinate (stablept) at (\stablex,\stabley);
+        \draw[successgreen!45!black, dashed, line width=1.2pt]
+          (\stablex,0) -- (stablept);
+
         \input{assets/eval_return_1m_tikz.tex}
+
+        \fill[successgreen!70!black] (solvedpt) circle (3.1pt);
+        \fill[white] (solvedpt) circle (1.35pt);
+        \node[draw=successgreen!70!black, fill=successgreen!8,
+              rounded corners=2pt, inner sep=2.4pt, align=left,
+              font=\scriptsize, anchor=south] (solvedlabel)
+          at (2.65,5.08) {first solved eval.\\\textbf{$0.44$M steps}};
+        \draw[-{Latex[length=1.5mm]}, successgreen!70!black, thick]
+          (solvedlabel.south east) -- ($(solvedpt)+(0.08,-0.05)$);
+
+        \fill[successgreen!45!black] (stablept) circle (3.1pt);
+        \fill[white] (stablept) circle (1.35pt);
+        \node[draw=successgreen!45!black, fill=successgreen!14,
+              rounded corners=2pt, inner sep=2.4pt, align=left,
+              font=\scriptsize, anchor=south] (stablelabel)
+          at (6.20,5.08) {consistently solved\\\textbf{$0.54$M steps}};
+        \draw[-{Latex[length=1.5mm]}, successgreen!45!black, thick]
+          (stablelabel.south west) -- ($(stablept)+(0.06,-0.07)$);
 
         \draw[tuwblue!28, line width=1pt] (0.25,4.55) -- (0.65,4.55);
         \node[anchor=west, font=\scriptsize] at (0.72,4.55) {periodic eval.};
@@ -959,6 +988,8 @@
       \begin{itemize}
         \item Same selected configuration as the Makefile ablation
         \item Periodic stochastic evaluation during training
+        \item First solved eval.: $0.44$M environment steps
+        \item Consistently solved from $0.54$M steps onward
         \item Final $60$ episodes: $500.0 \pm 0.0$, $100\%$ success
       \end{itemize}
     \end{column}
