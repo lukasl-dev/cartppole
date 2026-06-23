@@ -263,6 +263,7 @@
   \end{block}
 
   \begin{itemize}
+    \item Surrogate: optimize this proxy instead of the true expected return directly
     \item $r_t(\theta)$ compares the new policy to the policy that collected the rollout
     \item $\hat{A}_t$ tells whether the sampled action was better or worse than expected
     \item Clipping removes incentive for overly large policy changes
@@ -1041,10 +1042,8 @@
       \small
       \textbf{1M-timestep ablation run}\\[0.4em]
       \begin{itemize}
-        \item Same selected configuration as the Makefile ablation
+        \item Same selected configuration as above
         \item Periodic stochastic evaluation during training
-        \item First solved eval.: $0.44$M environment steps
-        \item Consistently solved from $0.54$M steps onward
         \item Final $60$ episodes: $500.0 \pm 0.0$, $100\%$ success
       \end{itemize}
     \end{column}
