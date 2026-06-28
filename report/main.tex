@@ -55,6 +55,12 @@
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+\definecolor{tuwblue}{RGB}{0,102,153}
+\definecolor{tuwgray}{RGB}{128,128,128}
+
 % Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
 \title{cartPPOle: \\ Proximal Policy Optimisation for CartPole-v1}
 
@@ -466,6 +472,117 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 
 % end of general instructions
 \fi
+
+\section{Experiment Setup}
+
+For the purposes of this paper, the PPO algorithm was implemented using pytorch. The training loop was implemented with configurable parameters and later on.
+Multiple variations of the configurable parameters were trained in this manner and subsequently evaluated on a reproducible set of CartPole-v1 instances.
+
+\subsection{Network architecture}
+
+A single network architecture was tested for both the actor and critic network. Both networks were constructed as MLPs with 2 hidden layers using \(\tanh\) activation functions.
+
+\begin{figure}[ht]
+  \centering
+  \begin{minipage}{0.45\textwidth}
+    \centering
+    \textbf{Actor} $\pi_\theta(a \mid s)$\\[0.5em]
+    \begin{tikzpicture}[
+        layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+                      minimum height=0.65cm, rounded corners, font=\small},
+        arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+        node distance=0.45cm
+      ]
+      \node[layer] (in)  {Input $(4)$};
+      \node[layer, below=of in]  (h1) {Linear$(64)$ + Tanh};
+      \node[layer, below=of h1]  (h2) {Linear$(64)$ + Tanh};
+      \node[layer, below=of h2]  (out) {Linear$(2)$};
+      \node[below=0.35cm of out, font=\small, text=tuwgray] (dist) {Categorical$(logits)$};
+      \draw[arrow] (in) -- (h1);
+      \draw[arrow] (h1) -- (h2);
+      \draw[arrow] (h2) -- (out);
+      \draw[arrow] (out) -- (dist);
+    \end{tikzpicture}
+  \end{minipage}%
+  \hfill
+  \begin{minipage}{0.45\textwidth}
+    \centering
+    \textbf{Critic} $V_\phi(s)$\\[0.5em]
+    \begin{tikzpicture}[
+        layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+                      minimum height=0.65cm, rounded corners, font=\small},
+        arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+        node distance=0.45cm
+      ]
+      \node[layer] (in)  {Input $(4)$};
+      \node[layer, below=of in]  (h1) {Linear$(64)$ + Tanh};
+      \node[layer, below=of h1]  (h2) {Linear$(64)$ + Tanh};
+      \node[layer, below=of h2]  (out) {Linear$(1)$};
+      \node[below=0.35cm of out, font=\small, text=tuwgray] (val) {$V(s) \in \mathbb{R}$};
+      \draw[arrow] (in) -- (h1);
+      \draw[arrow] (h1) -- (h2);
+      \draw[arrow] (h2) -- (out);
+      \draw[arrow] (out) -- (val);
+    \end{tikzpicture}
+  \end{minipage}
+  \caption{Actor and critic network architectures used for CartPole-v1. Both share a two-layer 64-unit MLP with Tanh activations. The actor outputs logits over the two discrete actions, the critic outputs a scalar value estimate.}
+\end{figure}
+
+\subsection{Hyperparameter sweep}
+
+The project code allows for the most important hyperparameters to. A sweep, is done over the product of all configured parameters, doing one training run for every combination of parameters.
+During training, metrics of the models performance were continuously collected. The actual evaluation however was done separately after training.
+
+To collect evaluation metrics, a fixed amount of CartPole-v1 episodes was run. For the presented results, this was a total of \(60\) episodes per agent.
+The seeds used for the evaluation run were consistent over all configurations to ensure reproducibility.
+
+Furthermore, the number of total steps done in the environment during training was made configurable on a per-sweep basis. The results presented in this paper will use a training budget of 1 million steps.
+
+The following parameters were varied across runs:
+\begin{itemize}
+  \item \textbf{Clip range} $\epsilon \in \{0.1,\,0.2,\,0.3\}$
+  \item \textbf{Advantage estimator} --- Monte Carlo or GAE with $\lambda \in \{0.90,\,0.95,\,0.97\}$
+  \item \textbf{Rollout/update ratio} --- (rollout length, epochs) pairs: $64{:}4,\;128{:}4,\;256{:}4,\;128{:}8$
+\end{itemize}
+
+All other parameters were kept fixed for all runs, using constants found in Table~\ref{tab:fixed-params}.
+
+\begin{table}[ht]
+  \caption{Fixed hyperparameters used across all sweep runs.}
+  \label{tab:fixed-params}
+  \centering
+  \begin{tabular}{ll}
+    \toprule
+    Parameter & Value \\
+    \midrule
+    Seeds & $0,1,2,3407$ \\
+    Timesteps & $1\mathrm{M}$ \\
+    Policy loss & clipped \\
+    Learning rate $\alpha$ & $2.5\times10^{-4}$ \\
+    Discount factor $\gamma$ & $0.99$ \\
+    Value coef.\ $c_1$ & $0.5$ \\
+    Entropy coef.\ $c_2$ & $0.01$ \\
+    Normalise adv.\ & true \\
+    Parallel envs $N$ & $8$ \\
+    Mini-batch size & $256$ \\
+    Eval episodes & $60$ \\
+    Success threshold & $475$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Metrics}
+
+\subsection{Training metrics}
+
+\subsection{Evaluation metrics}
+\begin{itemize}
+  \item \textbf{Mean episode return} --- average reward collected per episode; maximum is $500$ per default
+  \item \textbf{Standard deviation} --- standard deviation across multiple seeds, to judge stability across seeds
+  \item \textbf{Success rate} --- episode is defined as ``solved'' if return $\geq 475$
+\end{itemize}
+
+\section{Results}
 
 \newpage
 \input{checklist.tex}
