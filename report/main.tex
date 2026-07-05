@@ -473,11 +473,15 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 % end of general instructions
 \fi
 
-\section{Introduction}
+\section{Introduction and Background}
 
-\section{Experiment Setup}
+\subsection{Environment}
 
-For the purposes of this paper, the PPO algorithm was implemented using PyTorch. The training loop was implemented with configurable parameters, allowing many variations of the algorithm to be trained and subsequently evaluated on a reproducible set of CartPole-v1 instances.
+\section{Proximal Policy Optimization}
+
+\section{Methodology}
+
+For the purposes of this paper, the PPO algorithm was implemented using PyTorch\footnote{\url{https://pytorch.org/}} as a configurable training loop, allowing many variations of the algorithm to be trained via command-line parameters. Evaluation was implemented as a separate step, loading a trained checkpoint and rolling it out on a fixed, reproducible set of CartPole-v1 episodes. Both were combined in a sweep script, which trains and evaluates one agent for every combination of a chosen set of hyperparameters and random seeds.
 
 \subsection{Network architecture}
 
