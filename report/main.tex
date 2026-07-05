@@ -503,6 +503,35 @@ Each configuration is tested across multiple seeds and evaluated on a fixed, rep
 
 \subsection{Environment}
 
+Formally, an environment is modeled as a Markov Decision Process (MDP). At each discrete time step \(t = 0, 1, 2, \dots\), the environment is in a state \(S_t\), the agent selects an action \(A_t\), and (for \(t \neq 0\)) receives a reward \(R_t\). The environment then transitions into the next state, where the resulting state and reward are governed by a transition probability distribution \(p(s' \mid s, a)\) and a reward function \(r(s,a)\).
+
+CartPole-v1\footnote{Gymnasium: \url{https://gymnasium.farama.org/environments/classic_control/cart_pole/}} models a pole attached to a cart moving along a frictionless track. The goal is to keep the pole balanced by applying a force to the cart, either to the left or to the right.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.3\textwidth]{CartPole.png}
+  \caption{The CartPole-v1 environment: a pole attached to a cart moving along a frictionless track.}
+\end{figure}
+
+The environment is specified as follows:
+
+\begin{itemize}
+  \item \textbf{Action space} --- \(0\) (push left) or \(1\) (push right)
+  \item \textbf{Observation space}
+  \begin{itemize}
+    \item Cart position \(\in [-4.8, 4.8]\)
+    \item Cart velocity \(\in (-\infty, \infty)\)
+    \item Pole angle \(\in [-24^\circ, 24^\circ]\)
+    \item Pole angular velocity \(\in (-\infty, \infty)\)
+  \end{itemize}
+  \item \textbf{Reward} --- \(1\) per time step while the episode has not terminated
+  \item \textbf{Termination}
+  \begin{itemize}
+    \item Pole angle exceeds \(\pm 12^\circ\)
+    \item Cart leaves the area \([-2.4, 2.4]\)
+  \end{itemize}
+\end{itemize}
+
 \section{Proximal Policy Optimization}
 
 \section{Methodology}
