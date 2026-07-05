@@ -473,6 +473,8 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 % end of general instructions
 \fi
 
+\section{Introduction}
+
 \section{Experiment Setup}
 
 For the purposes of this paper, the PPO algorithm was implemented using pytorch. The training loop was implemented with configurable parameters and later on.
@@ -573,13 +575,27 @@ All other parameters were kept fixed for all runs, using constants found in Tabl
 
 \subsection{Metrics}
 
-\subsection{Training metrics}
+\subsubsection{Training metrics}
 
-\subsection{Evaluation metrics}
+During each training update, a broader set of metrics was logged to monitor optimization dynamics and policy behavior throughout training. Metrics were tracked using Aim\footnote{\url{https://github.com/aimhubio/aim}}, an open-source experiment tracker, which recorded each value alongside the corresponding update or mini-batch step for later inspection.
+
+\begin{itemize}
+  \item \textbf{Episode statistics} --- mean return and length of completed episodes, together with the fraction of episodes solved (return $\geq 475$)
+  \item \textbf{Rollout statistics} --- mean and total reward, mean return, mean advantage, and mean value estimate collected per rollout
+  \item \textbf{Loss components} --- total loss, policy loss, and value loss, logged for every mini-batch update
+  \item \textbf{Policy statistics} --- policy entropy and the mean and standard deviation of the probability ratio $r_t(\theta)$
+\end{itemize}
+
+% TODO add a few example screenshots from aim dashboard here (e.g. loss curve)
+
+\subsubsection{Evaluation metrics}
+
+During the evaluation step a smaller set of metrics was collected, these were used to judge the models performance after a full training run.
+
 \begin{itemize}
   \item \textbf{Mean episode return} --- average reward collected per episode; maximum is $500$ per default
-  \item \textbf{Standard deviation} --- standard deviation across multiple seeds, to judge stability across seeds
-  \item \textbf{Success rate} --- episode is defined as ``solved'' if return $\geq 475$
+  \item \textbf{Standard deviation} --- standard deviation of the episode returns within the evaluation run, to judge stability across evaluation episodes
+  \item \textbf{Success rate} --- episode is defined as ''solved'' if return $\geq 475$
 \end{itemize}
 
 \section{Results}
