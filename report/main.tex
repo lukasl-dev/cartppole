@@ -475,6 +475,17 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 
 \section{Introduction and Background}
 
+Reinforcement Learning is an approach to artificial intelligence that works without fixed input-output ground truths. Instead, an agent can learn to make decisions by continuously interacting with an environment.
+In this loop an agent observes a state from the environment, based on which it chooses its next action. This leads to the environment transitioning into a new state and responding to the agent's action
+with a reward indicating its value.
+
+This reward signal can be used to optimize the agent's policy for taking actions, enabling the agent to learn.
+
+In this project, PPO was implemented from scratch to solve the CartPole-v1 environment. Beyond training a working agent, the goal is also to study how choices of different parameters affect training stability and final performance,
+such as the clipping range, the advantage estimator (Monte Carlo returns versus Generalized Advantage Estimation with varying \(\lambda\)) and the rollout length/update epochs ratio.
+
+Each configuration is tested across multiple seeds and evaluated on a fixed, reproducible set of episodes, allowing conclusions about performance and stability to be drawn.
+
 \subsection{Environment}
 
 \section{Proximal Policy Optimization}
