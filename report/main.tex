@@ -479,6 +479,21 @@ Reinforcement Learning is an approach to artificial intelligence that works with
 In this loop an agent observes a state from the environment, based on which it chooses its next action. This leads to the environment transitioning into a new state and responding to the agent's action
 with a reward indicating its value.
 
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      node distance=2.5cm,
+      box/.style={rectangle, draw=black!80, thick, minimum width=2.8cm, minimum height=1.2cm, rounded corners},
+      arrow/.style={-{Latex[length=2mm]}, thick, black!80}
+    ]
+    \node[box] (agent) {\textbf{Agent}};
+    \node[box, right=of agent] (env) {\textbf{Environment}};
+    \draw[arrow, bend left=40] (agent.north) to node[above] {action} (env.north);
+    \draw[arrow, bend left=40] (env.south) to node[below] {state, reward} (agent.south);
+  \end{tikzpicture}
+  \caption{The reinforcement learning loop: the agent chooses an action, and the environment responds with a new state and a reward.}
+\end{figure}
+
 This reward signal can be used to optimize the agent's policy for taking actions, enabling the agent to learn.
 
 In this project, PPO was implemented from scratch to solve the CartPole-v1 environment. Beyond training a working agent, the goal is also to study how choices of different parameters affect training stability and final performance,
@@ -504,9 +519,9 @@ A single network architecture was tested for both the actor and critic network. 
     \centering
     \textbf{Actor} $\pi_\theta(a \mid s)$\\[0.5em]
     \begin{tikzpicture}[
-        layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+        layer/.style={rectangle, draw=black!80, thick, minimum width=2.6cm,
                       minimum height=0.65cm, rounded corners, font=\small},
-        arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+        arrow/.style={-{Latex[length=2mm]}, thick, black!60},
         node distance=0.45cm
       ]
       \node[layer] (in)  {Input $(4)$};
@@ -525,9 +540,9 @@ A single network architecture was tested for both the actor and critic network. 
     \centering
     \textbf{Critic} $V_\phi(s)$\\[0.5em]
     \begin{tikzpicture}[
-        layer/.style={rectangle, draw=tuwblue!80, thick, minimum width=2.6cm,
+        layer/.style={rectangle, draw=black!80, thick, minimum width=2.6cm,
                       minimum height=0.65cm, rounded corners, font=\small},
-        arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!60},
+        arrow/.style={-{Latex[length=2mm]}, thick, black!60},
         node distance=0.45cm
       ]
       \node[layer] (in)  {Input $(4)$};
