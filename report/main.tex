@@ -586,7 +586,13 @@ During each training update, a broader set of metrics was logged to monitor opti
   \item \textbf{Policy statistics} --- policy entropy and the mean and standard deviation of the probability ratio $r_t(\theta)$
 \end{itemize}
 
-% TODO add a few example screenshots from aim dashboard here (e.g. loss curve)
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.49\textwidth]{TrainingMetrics1.png}
+    \includegraphics[width=0.49\textwidth]{TrainingMetrics2.png}
+    \caption{Training metrics logged via Aim. Left: loss curves over training updates. Right: rollout value mean over training updates.}
+    \label{fig:training_metrics}
+\end{figure}
 
 \subsubsection{Evaluation metrics}
 
