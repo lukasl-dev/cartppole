@@ -477,8 +477,7 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 
 \section{Experiment Setup}
 
-For the purposes of this paper, the PPO algorithm was implemented using pytorch. The training loop was implemented with configurable parameters and later on.
-Multiple variations of the configurable parameters were trained in this manner and subsequently evaluated on a reproducible set of CartPole-v1 instances.
+For the purposes of this paper, the PPO algorithm was implemented using PyTorch. The training loop was implemented with configurable parameters, allowing many variations of the algorithm to be trained and subsequently evaluated on a reproducible set of CartPole-v1 instances.
 
 \subsection{Network architecture}
 
@@ -532,8 +531,8 @@ A single network architecture was tested for both the actor and critic network. 
 
 \subsection{Hyperparameter sweep}
 
-The project code allows for the most important hyperparameters to. A sweep, is done over the product of all configured parameters, doing one training run for every combination of parameters.
-During training, metrics of the models performance were continuously collected. The actual evaluation however was done separately after training.
+The project code allows the most important hyperparameters to be configured. A sweep is done over the product of all configured parameters, doing one training run for every combination of parameters.
+During training, metrics of the model's performance were continuously collected. The actual evaluation, however, was done separately after training.
 
 To collect evaluation metrics, a fixed amount of CartPole-v1 episodes was run. For the presented results, this was a total of \(60\) episodes per agent.
 The seeds used for the evaluation run were consistent over all configurations to ensure reproducibility.
@@ -596,7 +595,7 @@ During each training update, a broader set of metrics was logged to monitor opti
 
 \subsubsection{Evaluation metrics}
 
-During the evaluation step a smaller set of metrics was collected, these were used to judge the models performance after a full training run.
+During the evaluation step a smaller set of metrics was collected. These were used to judge the model's performance after a full training run.
 
 \begin{itemize}
   \item \textbf{Mean episode return} --- average reward collected per episode; maximum is $500$ per default
