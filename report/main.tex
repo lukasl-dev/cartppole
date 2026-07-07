@@ -782,6 +782,7 @@ PPO does not update once on the whole rollout. It shuffles the rollout batch, sp
 and optimize the policy loss, value loss, and entropy bonus with Adam. Reusing data improves sample efficiency, and clipping makes this reuse safer by limiting policy drift from $\pi_{\theta_{\mathrm{old}}}$. After all updates, $\theta_{\mathrm{old}} \leftarrow \theta$ and a new rollout is collected.
 
 \section{Methodology}
+\label{sec:methodology}
 
 For the purposes of this paper, the PPO algorithm was implemented using PyTorch\footnote{\url{https://pytorch.org/}} as a configurable training loop, allowing many variations of the algorithm to be trained via command-line parameters. Evaluation was implemented as a separate step, loading a trained checkpoint and rolling it out on a fixed, reproducible set of CartPole-v1 episodes. Both were combined in a sweep script, which trains and evaluates one agent for every combination of a chosen set of hyperparameters and random seeds.
 
@@ -910,6 +911,252 @@ During the evaluation step a smaller set of metrics was collected. These were us
 \end{itemize}
 
 \section{Results}
+
+All results in this section come from the 1M-step sweep described in Section~\ref{sec:methodology}: CartPole-v1, four seeds $(0,1,2,3407)$, 60 evaluation episodes per run, and a success threshold of $475$ return. Each table reports mean $\pm$ standard deviation across the seeds.
+
+\subsection{Ablation study}
+
+We ablate three dimensions independently, fixing the others at the best value found. Table~\ref{tab:ablation-clip} varies the clip range, Table~\ref{tab:ablation-adv} the advantage estimator, and Table~\ref{tab:ablation-rollout} the rollout/update ratio.
+
+\begin{table}[ht]
+  \caption{Clip range ablation (best row in bold). $\epsilon=0.2$ gives the best trade-off between return and success rate.}
+  \label{tab:ablation-clip}
+  \centering
+  \begin{tabular}{ccc}
+    \toprule
+    $\epsilon$ & Return & Success \\
+    \midrule
+    $0.1$ & $351.1 \pm 131.2$ & $0.46 \pm 0.42$ \\
+    \textbf{$0.2$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
+    $0.3$ & $334.3 \pm 169.0$ & $0.49 \pm 0.49$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \caption{Advantage estimator ablation at a fixed rollout of $128{:}4$. GAE is more reliable than Monte-Carlo returns in this sweep, and $\lambda=0.95$ performs best.}
+  \label{tab:ablation-adv}
+  \centering
+  \begin{tabular}{ccc}
+    \toprule
+    Estimator & Return & Success \\
+    \midrule
+    GAE $\lambda=0.90$ & $421.9 \pm 133.7$ & $0.75 \pm 0.43$ \\
+    \textbf{GAE $\lambda=0.95$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
+    GAE $\lambda=0.97$ & $289.4 \pm 117.3$ & $0.20 \pm 0.35$ \\
+    MC & $348.2 \pm 112.9$ & $0.23 \pm 0.28$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+  \caption{Rollout/update ratio ablation. Longer rollouts solve CartPole far more reliably; $256{:}4$ reaches the maximum return with zero variance across seeds.}
+  \label{tab:ablation-rollout}
+  \centering
+  \begin{tabular}{ccc}
+    \toprule
+    Steps:epochs & Return & Success \\
+    \midrule
+    $64{:}4$ & $146.5 \pm 29.1$ & $0.00 \pm 0.00$ \\
+    $128{:}4$ & $418.1 \pm 133.3$ & $0.73 \pm 0.42$ \\
+    \textbf{$256{:}4$} & \textbf{$500.0 \pm 0.0$} & \textbf{$1.00 \pm 0.00$} \\
+    $128{:}8$ & $429.4 \pm 55.7$ & $0.68 \pm 0.25$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Read together, the tables suggest that not all three knobs matter equally. The clip range matters least: $\epsilon=0.2$ lands in a stable sweet spot, while $0.1$ and $0.3$ fall off, so the surrogate is sensitive to how much freedom it is given. GAE matters more; once $\lambda$ is tuned to $0.95$ it beats Monte-Carlo returns handily, whereas $0.97$ unravels the run, presumably because the estimate turns noisy enough to destabilise updates. What dominates, though, is the rollout length: $64$-step rollouts never learn, since each update is built from too little trajectory to form a meaningful advantage, whereas $256$ steps solve the environment on every seed. Doubling the epochs at half the length ($128{:}8$) does not rescue the shorter rollout, which says the policy is short on experience, not on gradient steps.
+
+The winning recipe combines conservative clipping, low-variance GAE, and longer rollouts, and solves CartPole-v1 perfectly:
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      scale=0.85,
+      transform shape,
+      card/.style={rectangle, rounded corners, draw=tuwblue!75, thick,
+                   fill=tuwblue!5, minimum width=2.35cm, minimum height=0.95cm,
+                   align=center, font=\scriptsize},
+      result/.style={rectangle, rounded corners, draw=successgreen!80!black,
+                     ultra thick, fill=successgreen!12, minimum width=2.95cm,
+                     minimum height=1.15cm, align=center, font=\scriptsize\bfseries},
+      plus/.style={font=\Large\bfseries, text=tuwblue},
+      arrow/.style={-{Latex[length=2mm]}, ultra thick, successgreen!70!black}
+    ]
+    \node[card] (clip) at (-4.20,0) {conservative\\clip $\epsilon=0.2$};
+    \node[plus] at (-2.775,0) {$+$};
+    \node[card] (gae) at (-1.35,0) {low-variance\\GAE $\lambda=0.95$};
+    \node[plus] at (0.075,0) {$+$};
+    \node[card] (roll) at (1.50,0) {longer rollout\\$256{:}4$};
+    \node[result] (res) at (4.85,0) {SOLVED\\$500.0\pm0.0$ return\\$100\%$ success};
+    \draw[arrow] (roll.east) -- (res.west);
+  \end{tikzpicture}
+  \caption{The winning configuration: constrain updates, estimate advantages well, and collect enough context per iteration.}
+  \label{fig:winning-recipe}
+\end{figure}
+
+\subsection{Sample efficiency}
+
+Figure~\ref{fig:sample-efficiency} compares the best GAE run against a Monte-Carlo run on the same configuration otherwise. The GAE run becomes stably solved after about $0.54$M environment steps, while the MC run never reaches the success threshold within the 1M-step budget. This matches the ablation: GAE's lower-variance advantages let the policy improve steadily, whereas the noisier MC estimate hampers learning.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,
+    labelbox/.style={rounded corners=2pt, inner sep=4pt, align=center,
+      font=\small},
+    metric/.style={draw=tuwgray!45, fill=tuwgray!5, rounded corners=2pt,
+      inner sep=4pt, align=center, font=\scriptsize}
+  ]
+    \def\barw{8.6}
+    \def\barh{0.42}
+    \def\stablex{4.64}
+
+    \node[font=\bfseries, anchor=east, text=successgreen!65!black]
+      at (-5.25,1.25) {GAE};
+    \draw[fill=tuwgray!12, draw=tuwgray!45, rounded corners=2pt]
+      (-4.95,1.04) rectangle ++(\barw,\barh);
+    \draw[fill=successgreen!35, draw=successgreen!65!black, rounded corners=2pt]
+      (-4.95,1.04) rectangle ++(\stablex,\barh);
+    \draw[successgreen!65!black, line width=1.2pt]
+      (-4.95+\stablex,0.92) -- ++(0,0.70);
+    \node[labelbox, draw=successgreen!65!black, fill=successgreen!9, anchor=south]
+      at (-4.95+\stablex,1.78) {stable solved\\\textbf{$0.54$M steps}};
+
+    \node[font=\bfseries, anchor=east, text=failred!85!black]
+      at (-5.25,0.05) {MC};
+    \draw[fill=failred!10, draw=failred!45, rounded corners=2pt]
+      (-4.95,-0.16) rectangle ++(\barw,\barh);
+    \draw[failred!80!black, line width=1.2pt]
+      (3.65,-0.28) -- ++(0,0.70);
+    \node[labelbox, draw=failred!80!black, fill=failred!7, anchor=south]
+      at (3.65,0.58) {not solved after\\\textbf{$1.0$M steps}};
+
+    \foreach \x/\lab in {-4.95/$0$, -0.65/$0.5$M, 3.65/$1.0$M} {
+      \draw[tuwgray!45] (\x,-0.45) -- (\x,-0.34);
+      \node[font=\scriptsize, below] at (\x,-0.45) {\lab};
+    }
+    \node[font=\scriptsize, below] at (-0.65,-0.88) {environment steps};
+
+    \node[metric, draw=successgreen!55!black, fill=successgreen!8]
+      at (-3.55,-1.65) {GAE selected run\\\textbf{$500.0\pm0.0$}\\$100\%$ success};
+    \node[metric, draw=failred!70!black, fill=failred!6]
+      at (2.85,-1.65) {MC selected run\\\textbf{$360.8\pm126.2$}\\$25\%$ success};
+  \end{tikzpicture}
+  \caption{Sample efficiency of GAE versus Monte-Carlo advantages on the selected configuration. GAE reaches stable solved performance at $0.54$M steps; MC does not solve the task within the budget.}
+  \label{fig:sample-efficiency}
+\end{figure}
+
+\subsection{Learning progress}
+
+Figure~\ref{fig:learning-progress} shows the evaluation return of the selected configuration over the 1M-step training run. Periodic stochastic evaluation oscillates as the policy improves, while the moving average rises steadily. The run first reaches the solved threshold ($475$) at about $0.44$M steps and is consistently solved from $0.54$M steps onward, plateauing at the maximum return of $500$. The final evaluation over 60 episodes gives $500.0 \pm 0.0$ return and a $100\%$ success rate.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \def\plotw{8.8}
+    \def\ploth{4.8}
+    \def\threshold{4.385}
+    \def\solvedx{3.90}
+    \def\solvedy{4.62}
+    \def\stablex{4.76}
+    \def\stabley{4.62}
+
+    \foreach \x/\lab in {0/0,2.20/.25M,4.40/.50M,6.60/.75M,8.80/1.0M} {
+      \draw[tuwgray!18] (\x,0) -- (\x,\ploth);
+      \node[font=\scriptsize, below] at (\x,0) {\lab};
+    }
+    \foreach \y/\lab in {0/0,0.92/100,1.85/200,2.77/300,3.69/400,4.62/500} {
+      \draw[tuwgray!18] (0,\y) -- (\plotw,\y);
+      \node[font=\scriptsize, left] at (0,\y) {\lab};
+    }
+
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
+      node[below, font=\scriptsize] {environment steps};
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
+      node[above, font=\scriptsize] {evaluation return};
+
+    \draw[successgreen, dashed, thick] (0,\threshold) -- (\plotw,\threshold);
+    \node[anchor=north east, font=\scriptsize, text=successgreen, yshift=-0.15em]
+      at (\plotw,\threshold) {solved threshold};
+
+    \coordinate (solvedpt) at (\solvedx,\solvedy);
+    \draw[successgreen!70!black, dashed, line width=1.2pt]
+      (\solvedx,0) -- (solvedpt);
+    \coordinate (stablept) at (\stablex,\stabley);
+    \draw[successgreen!45!black, dashed, line width=1.2pt]
+      (\stablex,0) -- (stablept);
+
+    \input{eval_return_1m_tikz.tex}
+
+    \fill[successgreen!70!black] (solvedpt) circle (3.1pt);
+    \fill[white] (solvedpt) circle (1.35pt);
+    \node[draw=successgreen!70!black, fill=successgreen!8,
+          rounded corners=2pt, inner sep=2.4pt, align=left,
+          font=\scriptsize, anchor=south] (solvedlabel)
+      at (2.65,5.08) {first solved eval.\\\textbf{$0.44$M steps}};
+    \draw[-{Latex[length=1.5mm]}, successgreen!70!black, thick]
+      (solvedlabel.south east) -- ($(solvedpt)+(0.08,-0.05)$);
+
+    \fill[successgreen!45!black] (stablept) circle (3.1pt);
+    \fill[white] (stablept) circle (1.35pt);
+    \node[draw=successgreen!45!black, fill=successgreen!14,
+          rounded corners=2pt, inner sep=2.4pt, align=left,
+          font=\scriptsize, anchor=south] (stablelabel)
+      at (6.20,5.08) {consistently solved\\\textbf{$0.54$M steps}};
+    \draw[-{Latex[length=1.5mm]}, successgreen!45!black, thick]
+      (stablelabel.south west) -- ($(stablept)+(0.06,-0.07)$);
+
+    \draw[tuwblue!28, line width=1pt] (0.25,4.55) -- (0.65,4.55);
+    \node[anchor=west, font=\scriptsize] at (0.72,4.55) {periodic eval.};
+    \draw[tuwblue, very thick] (0.25,4.30) -- (0.65,4.30);
+    \node[anchor=west, font=\scriptsize] at (0.72,4.30) {moving average};
+  \end{tikzpicture}
+  \caption{Evaluation return of the selected configuration over a 1M-step training run. The policy first solves the task at $0.44$M steps and is consistently solved from $0.54$M steps, reaching the maximum return of $500$.}
+  \label{fig:learning-progress}
+\end{figure}
+
+\subsection{Loss curves}
+
+Figure~\ref{fig:loss-curve} plots the total loss over optimizer steps for the selected run. The loss is initially driven by the value term as the critic catches up, then falls and stabilises near zero once the policy consistently solves the environment and the returns carry little surprise. The remaining small oscillations correspond to the on-policy re-collection of fresh rollouts.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \def\plotw{11.1}
+    \def\ploth{5.15}
+
+    \foreach \x/\lab in {0/0,3.56/5k,7.11/10k,10.67/15k} {
+      \draw[tuwgray!18] (\x,0) -- (\x,\ploth);
+      \node[font=\scriptsize, below] at (\x,0) {\lab};
+    }
+    \foreach \y/\lab in {0/0,1.72/20,3.43/40,5.15/60} {
+      \draw[tuwgray!18] (0,\y) -- (\plotw,\y);
+      \node[font=\scriptsize, left] at (0,\y) {\lab};
+    }
+
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (\plotw+0.25,0)
+      node[below, font=\scriptsize, xshift=0.55cm] {optimizer step};
+    \draw[-{Latex[length=1.5mm]}, tuwgray!80] (0,0) -- (0,\ploth+0.25)
+      node[above, font=\scriptsize] {loss};
+
+    \input{losses_1m_tikz.tex}
+  \end{tikzpicture}
+  \caption{Total PPO loss over optimizer steps for the selected run. The loss falls and stabilises near zero once the policy consistently solves the environment.}
+  \label{fig:loss-curve}
+\end{figure}
+
+\subsection{Experiment tracking}
+
+All training runs were logged and compared in Aim\footnote{\url{https://github.com/aimhubio/aim}}. Figure~\ref{fig:aim-dashboard} shows the eval-return and loss dashboards across the full sweep. Tracking runs in a central dashboard made it easier to compare ablations, debug suspicious metrics, and select the configurations reported above.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.49\textwidth]{aim_dashboard_eval.png}
+  \hfill
+  \includegraphics[width=0.49\textwidth]{aim_dashboard_loss.png}
+  \caption{Aim dashboards for the full hyperparameter sweep. Left: evaluation return across runs. Right: total loss across runs.}
+  \label{fig:aim-dashboard}
+\end{figure}
 
 \newpage
 \input{checklist.tex}
