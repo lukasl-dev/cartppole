@@ -51,15 +51,20 @@
 \usepackage{url}            % simple URL typesetting
 \usepackage{booktabs}       % professional-quality tables
 \usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsmath}        % math environments
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
 
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning}
+\usetikzlibrary{arrows.meta, positioning, calc}
 
 \definecolor{tuwblue}{RGB}{0,102,153}
 \definecolor{tuwgray}{RGB}{128,128,128}
+\definecolor{successgreen}{RGB}{34,139,34}
+\definecolor{failred}{RGB}{178,34,34}
+\definecolor{valueorange}{RGB}{230,126,34}
+\definecolor{policyviolet}{RGB}{117,80,123}
 
 % Note. For the workshop paper template, both \title{} and \workshoptitle{} are required, with the former indicating the paper title shown in the title and the latter indicating the workshop title displayed in the footnote. 
 \title{cartPPOle: \\ Proximal Policy Optimisation for CartPole-v1}
@@ -537,6 +542,244 @@ The environment is specified as follows:
 \end{itemize}
 
 \section{Proximal Policy Optimization}
+
+PPO\footnote{Schulman et al., \emph{Proximal Policy Optimization Algorithms}, arXiv:1707.06347v2 (2017).} is an on-policy actor--critic method. It alternates between \emph{sampling} with the current policy and \emph{optimizing} a surrogate objective on the collected data. The \textbf{actor} $\pi_\theta(a \mid s)$ chooses actions and is the policy being improved; the \textbf{critic} $V_\phi(s)$ estimates the state value and is used to compute advantages $\hat{A}_t$. Each rollout is reused for several mini-batch epochs, but the clipped objective keeps the new policy close to the one that collected the data.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      scale=0.85,
+      transform shape,
+      box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                  minimum height=0.75cm,
+                  align=center, font=\small},
+      smallbox/.style={rectangle, draw=tuwblue!60, thick, rounded corners,
+                       minimum height=0.65cm,
+                       align=center, font=\scriptsize},
+      leftbox/.style={box, text width=2.75cm},
+      rightbox/.style={box, text width=3.05cm},
+      leftsmall/.style={smallbox, text width=2.75cm},
+      rightsmall/.style={smallbox, text width=3.05cm},
+      arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!70},
+      node distance=0.55cm and 1.35cm
+    ]
+    \node[leftbox] (actor) {Actor\\$\pi_{\theta_{\mathrm{old}}}(a\mid s)$};
+    \node[rightbox, right=of actor] (env) {Environment\\CartPole};
+    \node[rightsmall, below=of env] (rollout) {rollout data\\$s_t,a_t,r_t$\\$\log\pi_{\theta_{\mathrm{old}}}$};
+    \node[leftbox, below=of actor] (critic) {Critic\\$V_\phi(s)$};
+    \node[rightsmall, below=of rollout] (adv) {advantage\\estimates $\hat{A}_t$};
+    \node[leftsmall] (update) at (critic |- adv) {PPO update\\clipped surrogate};
+
+    \draw[arrow] (actor.east) -- node[midway, above=2pt, font=\scriptsize] {actions} (env.west);
+    \draw[arrow] (env.south) -- node[right, font=\scriptsize] {samples} (rollout.north);
+    \draw[arrow] (rollout.south) -- (adv.north);
+    \draw[arrow] (critic.east) -- node[midway, above=3pt, xshift=0.12cm, font=\scriptsize] {$V(s_t)$} (adv.west);
+    \draw[arrow] (adv.west) -- (update.east);
+    \draw[arrow] (update.north) -- node[left, font=\scriptsize] {fit $V$} (critic.south);
+    \draw[arrow, rounded corners] (update.west) -- ++(-0.45,0) |- node[left, font=\scriptsize] {$\theta\leftarrow$} (actor.west);
+  \end{tikzpicture}
+  \caption{PPO overview. The actor collects a rollout, the critic helps compute advantages, and the clipped surrogate objective updates both networks before the next rollout.}
+  \label{fig:ppo-overview}
+\end{figure}
+
+PPO does not search over actions directly; it changes the network parameters so that the policy distribution assigns better probabilities. The PPO paper writes objectives to maximize; in our implementation we minimise the negative objective with Adam:
+\[
+  \theta,\phi \leftarrow \theta,\phi - \alpha\,\nabla_{\theta,\phi}\mathcal{L}^{\mathrm{PPO}}.
+\]
+
+\subsection{Objective}
+
+\subsubsection{Clipped policy objective}
+
+The actor is updated with the clipped surrogate objective. Let $r_t(\theta)$ be the probability ratio between the new and the old policy on the sampled action:
+\[
+  r_t(\theta) = \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)}, \qquad r_t(\theta_{\mathrm{old}}) = 1.
+\]
+The clipped objective is then
+\[
+  L_t^{\mathrm{CLIP}}(\theta) = \min\!\left( r_t(\theta)\hat{A}_t,\; \operatorname{clip}\bigl(r_t(\theta), 1-\epsilon, 1+\epsilon\bigr)\hat{A}_t \right).
+\]
+The ratio compares the new policy to the policy that collected the rollout, $\hat{A}_t$ signals whether the sampled action was better or worse than expected, and the clipping removes the incentive for overly large policy changes. ``Proximal'' means the update is restricted: PPO removes the incentive for probability ratios outside $[1-\epsilon, 1+\epsilon]$.
+
+\subsubsection{Value-function loss}
+
+The critic is trained as a regression problem, predicting the return target for each sampled state:
+\[
+  L_t^{\mathrm{VF}}(\phi) = \bigl(V_\phi(s_t) - V_t^{\mathrm{target}}\bigr)^2.
+\]
+A better critic yields better advantage estimates and reduces update variance.
+
+\subsubsection{Entropy bonus and combined objective}
+
+PPO also rewards stochastic policies to avoid collapsing to one action too early. The entropy bonus is
+\[
+  S[\pi_\theta](s_t) = -\sum_a \pi_\theta(a\mid s_t)\log \pi_\theta(a\mid s_t),
+\]
+and the combined objective minimised in our implementation is the negative of
+\[
+  L_t^{\mathrm{PPO}}(\theta, \phi) = L_t^{\mathrm{CLIP}}(\theta) - c_1 L_t^{\mathrm{VF}}(\phi) + c_2 S[\pi_\theta](s_t),
+\]
+with value coefficient $c_1$ and entropy coefficient $c_2$.
+
+\subsection{Advantage estimation}
+
+The policy loss needs a signal for whether the sampled action was good. Instead of using raw return, PPO uses an \textbf{advantage estimate}, which compares an estimate of the action's return with the critic's baseline:
+\[
+  \hat{A}_t \approx \underbrace{\widehat{Q}_t}_{\text{rollout estimate}} - \underbrace{V_\phi(s_t)}_{\text{critic baseline}}.
+\]
+If $\hat{A}_t > 0$ the action was better than expected and is made more likely; if $\hat{A}_t < 0$ it is made less likely.
+
+\subsubsection{Rollout return}
+
+A direct estimate compares a discounted rollout return with the critic's current value estimate. For a rollout segment of length $T$ starting at position $t$,
+\[
+  G_t = \sum_{l=0}^{T-t-1} \gamma^l r_{t+l} + \gamma^{T-t} V_\phi(s_T), \qquad \hat{A}_t = G_t - V_\phi(s_t).
+\]
+This uses the real rewards from the sampled trajectory segment and \emph{bootstraps} with $V_\phi(s_T)$ because PPO uses fixed-length rollouts that may stop before the episode ends. The unobserved future after $s_T$ is replaced by the critic's estimate; if $s_T$ is terminal, that estimate is $0$. This estimate has low bias but can have high variance.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      state/.style={circle, draw=tuwblue!80, thick, minimum size=0.72cm, font=\scriptsize},
+      reward/.style={rectangle, draw=tuwblue!60, rounded corners, minimum width=0.65cm,
+                     minimum height=0.45cm, font=\scriptsize},
+      arrow/.style={-{Latex[length=1.6mm]}, thick, tuwblue!70},
+      node distance=0.45cm
+    ]
+    \node[state] (st) {$s_t$};
+    \node[reward, right=of st] (rt) {$r_t$};
+    \node[state, right=of rt] (st1) {$s_{t+1}$};
+    \node[right=0.25cm of st1] (dots) {$\cdots$};
+    \node[reward, right=0.25cm of dots] (rT) {$r_{T-1}$};
+    \node[state, right=of rT] (sT) {$s_T$};
+    \node[reward, right=0.85cm of sT, dashed, draw=failred!70] (future) {$?$};
+    \node[below=0.25cm of future, font=\scriptsize, text=failred] {unobserved future};
+    \node[reward, below=0.72cm of sT, draw=successgreen!80, text width=1.35cm,
+          align=center] (boot) {$V_\phi(s_T)$};
+
+    \draw[arrow] (st) -- (rt);
+    \draw[arrow] (rt) -- (st1);
+    \draw[arrow] (st1) -- (dots);
+    \draw[arrow] (dots) -- (rT);
+    \draw[arrow] (rT) -- (sT);
+    \draw[arrow, dashed, failred!70] (sT) -- (future);
+    \draw[arrow, successgreen!80] (sT) -- (boot);
+  \end{tikzpicture}
+  \caption{Bootstrapping in a fixed-length rollout. The unobserved future after $s_T$ is replaced by the critic's value estimate $V_\phi(s_T)$.}
+  \label{fig:bootstrapping}
+\end{figure}
+
+\subsubsection{Generalized Advantage Estimation}
+
+Generalized Advantage Estimation (GAE) smooths many temporal-difference (TD) errors into one advantage estimate:
+\[
+  \delta_t = r_t + \gamma V(s_{t+1}) - V(s_t), \qquad \hat{A}_t^{\mathrm{GAE}} = \sum_{l=0}^{T-t-1} (\gamma\lambda)^l \delta_{t+l}.
+\]
+Here $\delta_t$ measures the one-step surprise relative to the critic, and $\lambda$ controls how far future TD errors influence $\hat{A}_t$. The critic target used later is $V_t^{\mathrm{target}} = \hat{A}_t + V(s_t)$. Expanding the sum,
+\[
+  \hat{A}_t^{\mathrm{GAE}} = \delta_t + (\gamma\lambda)\delta_{t+1} + (\gamma\lambda)^2\delta_{t+2} + \cdots,
+\]
+so small $\lambda$ relies more on the critic (lower variance, more bias) while large $\lambda$ approaches the Monte-Carlo return (lower bias, more variance). $\lambda=0$ gives the one-step TD estimate and $\lambda=1$ the rollout-return-like estimate.
+
+\subsection{Clipped vs.\ unclipped objective}
+
+PPO reuses the same rollout for several gradient steps, so the ratio $r_t(\theta)$ measures how much the new policy changed on the sampled action. The unclipped surrogate $L_t^{\mathrm{unclip}}(\theta)=r_t(\theta)\hat{A}_t$ would push the policy as far as the gradient allows: nothing stops very large policy changes. The clipped surrogate
+\[
+  L_t^{\mathrm{CLIP}}(\theta) = \min\!\left( r_t\hat{A}_t,\; \operatorname{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t \right)
+\]
+allows updates near the old policy but removes the incentive outside $[1-\epsilon, 1+\epsilon]$, with $\epsilon$ controlling how conservative the update is.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      scale=0.9,
+      arrow/.style={-{Latex[length=1.8mm]}, thick, tuwblue!70},
+      tick/.style={thick, tuwblue!70},
+      label/.style={font=\scriptsize}
+    ]
+    \draw[arrow] (0,0) -- (7.0,0) node[right, label] {$r_t$};
+    \draw[tick] (2,0.12) -- (2,-0.12) node[below, label] {$1-\epsilon$};
+    \draw[tick] (3.5,0.12) -- (3.5,-0.12) node[below, label] {$1$};
+    \draw[tick] (5,0.12) -- (5,-0.12) node[below, label] {$1+\epsilon$};
+    \draw[very thick, successgreen!75] (2,0.28) -- (5,0.28);
+    \node[label, successgreen!60!black] at (3.5,0.62) {trusted update region};
+    \node[label, failred] at (1.0,0.28) {too far};
+    \node[label, failred] at (6.0,0.28) {too far};
+  \end{tikzpicture}
+  \caption{The clipped objective only rewards updates whose probability ratio stays within $[1-\epsilon,1+\epsilon]$ of the old policy.}
+  \label{fig:clip-region}
+\end{figure}
+
+\subsection{Training loop}
+
+\subsubsection{One PPO iteration}
+
+PPO alternates between collecting fresh on-policy data and reusing that data for a limited number of optimization steps. The data is \emph{on-policy}: collected with the old policy before the update, and the stored old log-probabilities define the ratio $r_t(\theta)$ during optimization.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
+                  minimum width=3.0cm, minimum height=0.9cm, align=center},
+      arrow/.style={-{Latex[length=2mm]}, thick, tuwblue!70},
+      node distance=0.7cm
+    ]
+    \node[box] (old) {current policy\\$\pi_{\theta_{\mathrm{old}}}$};
+    \node[box, right=of old] (rollout) {collect rollout\\$N\times T$ samples};
+    \node[box, right=of rollout] (adv) {compute\\$\hat{A}_t, V_t^{\mathrm{target}}$};
+    \node[box, below=of adv] (update) {mini-batch updates\\$K$ epochs};
+    \node[box, left=of update] (new) {new policy\\$\pi_\theta$};
+
+    \draw[arrow] (old) -- (rollout);
+    \draw[arrow] (rollout) -- (adv);
+    \draw[arrow] (adv) -- (update);
+    \draw[arrow] (update) -- (new);
+    \draw[arrow]
+      (new.west) .. controls +(-1.0,0) and +(0,-1.0) ..
+      node[pos=0.55, xshift=-0.2cm, left, font=\scriptsize] {$\theta_{\mathrm{old}}\leftarrow\theta$}
+      (old.south);
+  \end{tikzpicture}
+  \caption{One PPO iteration: collect a rollout, compute advantages and targets, perform $K$ epochs of mini-batch updates, then copy the new weights into the old policy.}
+  \label{fig:ppo-iteration}
+\end{figure}
+
+\subsubsection{Parallel rollout collection}
+
+Instead of one environment, PPO commonly runs $N$ environments in parallel for $T$ steps, giving a batch of $N\cdot T$ transitions per iteration. For each transition PPO stores $s_t, a_t, r_t, \text{done}_t, \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)$, and $V_\phi(s_t)$.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tikzpicture}[
+      cell/.style={rectangle, draw=tuwblue!65, rounded corners,
+                   minimum width=1.05cm, minimum height=0.5cm, font=\scriptsize},
+      label/.style={font=\scriptsize},
+      arrow/.style={-{Latex[length=1.6mm]}, thick, tuwblue!70}
+    ]
+    \foreach \row/\env in {0/1,1/2,2/\vdots,3/N} {
+      \node[label] at (-1.05,-\row*0.7) {env $\env$};
+      \node[cell] at (0,-\row*0.7) {$t$};
+      \node[cell] at (1.35,-\row*0.7) {$t+1$};
+      \node[cell] at (2.70,-\row*0.7) {$\cdots$};
+      \node[cell] at (4.35,-\row*0.7) {$t+T-1$};
+    }
+    \draw[arrow] (-0.1,0.55) -- (4.65,0.55) node[right,label] {$T$ steps};
+    \draw[arrow] (5.45,0.05) -- (5.45,-2.15) node[below, xshift=0.25cm, label] {$N$ envs};
+  \end{tikzpicture}
+  \caption{Parallel rollout collection: $N$ environments stepped for $T$ steps yield $N\cdot T$ transitions per iteration.}
+  \label{fig:parallel-rollout}
+\end{figure}
+
+\subsubsection{From rollout to training batch}
+
+After rollout collection, the data is converted into supervised-style targets for the actor and critic. From the rewards we bootstrap from $V_\phi(s_T)$ if needed, compute advantages $\hat{A}_t$ using the Monte-Carlo return or GAE, and form the critic targets $V_t^{\mathrm{target}} = \hat{A}_t + V_\phi(s_t)$. The rollout of shape $N\times T$ is then flattened into a training batch of size $N\cdot T$, shuffled, split into mini-batches, and the advantages are optionally normalized before updates.
+
+\subsubsection{Mini-batch updates}
+
+PPO does not update once on the whole rollout. It shuffles the rollout batch, splits it into mini-batches, and performs several passes over the same data. For each epoch and mini-batch, the networks recompute $\log\pi_\theta(a_t\mid s_t)$ and $V_\phi(s_t)$ with the current parameters, form the ratio
+\[
+  r_t(\theta) = \exp\!\bigl(\log\pi_\theta(a_t\mid s_t) - \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)\bigr),
+\]
+and optimize the policy loss, value loss, and entropy bonus with Adam. Reusing data improves sample efficiency, and clipping makes this reuse safer by limiting policy drift from $\pi_{\theta_{\mathrm{old}}}$. After all updates, $\theta_{\mathrm{old}} \leftarrow \theta$ and a new rollout is collected.
 
 \section{Methodology}
 
