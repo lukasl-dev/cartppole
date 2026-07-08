@@ -485,7 +485,7 @@ Note: Think of the appendix as ``optional reading'' for reviewers. The paper mus
 
 \section{Introduction and Background}
 
-Reinforcement Learning is an approach to artificial intelligence that works without fixed input-output ground truths. Instead, an agent can learn to make decisions by continuously interacting with an environment.
+Reinforcement Learning is an approach to artificial intelligence that works without fixed input-output ground truths~\citep{sutton2018rl}. Instead, an agent can learn to make decisions by continuously interacting with an environment.
 In this loop an agent observes a state from the environment, based on which it chooses its next action. This leads to the environment transitioning into a new state and responding to the agent's action
 with a reward indicating its value.
 
@@ -544,7 +544,7 @@ The environment is specified as follows:
 
 \section{Proximal Policy Optimization}
 
-PPO\footnote{Schulman et al., \emph{Proximal Policy Optimization Algorithms}, arXiv:1707.06347v2 (2017).} is an on-policy actor--critic method. It alternates between \emph{sampling} with the current policy and \emph{optimizing} a surrogate objective on the collected data. The \textbf{actor} $\pi_\theta(a \mid s)$ chooses actions and is the policy being improved; the \textbf{critic} $V_\phi(s)$ estimates the state value and is used to compute advantages $\hat{A}_t$. Each rollout is reused for several mini-batch epochs, but the clipped objective keeps the new policy close to the one that collected the data.
+PPO~\citep{schulman2017ppo} is an on-policy actor--critic method. It alternates between \emph{sampling} with the current policy and \emph{optimizing} a surrogate objective on the collected data. The \textbf{actor} $\pi_\theta(a \mid s)$ chooses actions and is the policy being improved; the \textbf{critic} $V_\phi(s)$ estimates the state value and is used to compute advantages $\hat{A}_t$. Each rollout is reused for several mini-batch epochs, but the clipped objective keeps the new policy close to the one that collected the data.
 
 \begin{figure}[H]
   \centering
@@ -1159,8 +1159,20 @@ All training runs were logged and compared in Aim\footnote{\url{https://github.c
   \label{fig:aim-dashboard}
 \end{figure}
 
-\newpage
-\input{checklist.tex}
+\begin{thebibliography}{2}
 
+\bibitem[Schulman et~al.(2017)Schulman, Wolski, Dhariwal, Radford, and Klimov]{schulman2017ppo}
+John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov.
+\newblock Proximal policy optimization algorithms.
+\newblock \emph{arXiv preprint arXiv:1707.06347}, 2017.
+\newblock \url{https://arxiv.org/pdf/1707.06347}.
+
+\bibitem[Sutton and Barto(2018)]{sutton2018rl}
+Richard S. Sutton and Andrew G. Barto.
+\newblock \emph{Reinforcement Learning: An Introduction}.
+\newblock MIT Press, 2nd edition, 2018.
+\newblock \url{http://incompleteideas.net/book/the-book-2nd.html}.
+
+\end{thebibliography}
 
 \end{document}
