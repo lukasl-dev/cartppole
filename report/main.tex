@@ -860,22 +860,19 @@ All other parameters were kept fixed for all runs, using constants found in Tabl
   \caption{Fixed hyperparameters used across all sweep runs.}
   \label{tab:fixed-params}
   \centering
-  \begin{tabular}{ll}
+  \normalsize
+  \setlength{\tabcolsep}{5pt}
+  \renewcommand{\arraystretch}{1.05}
+  \begin{tabular}{@{}ll@{\qquad}ll@{}}
     \toprule
-    Parameter & Value \\
+    Parameter & Value & Parameter & Value \\
     \midrule
-    Seeds & $0,1,2,3407$ \\
-    Timesteps & $1\mathrm{M}$ \\
-    Policy loss & clipped \\
-    Learning rate $\alpha$ & $2.5\times10^{-4}$ \\
-    Discount factor $\gamma$ & $0.99$ \\
-    Value coef.\ $c_1$ & $0.5$ \\
-    Entropy coef.\ $c_2$ & $0.01$ \\
-    Normalise adv.\ & true \\
-    Parallel envs $N$ & $8$ \\
-    Mini-batch size & $256$ \\
-    Eval episodes & $60$ \\
-    Success threshold & $475$ \\
+    Seeds & $0,1,2,3407$ & Timesteps & $1\mathrm{M}$ \\
+    Policy loss & clipped & Learning rate $\alpha$ & $2.5\times10^{-4}$ \\
+    Discount $\gamma$ & $0.99$ & Value coef.\ $c_1$ & $0.5$ \\
+    Entropy coef.\ $c_2$ & $0.01$ & Normalise adv.\ & true \\
+    Parallel envs $N$ & $8$ & Mini-batch size & $256$ \\
+    Eval episodes & $60$ & Success threshold & $475$ \\
     \bottomrule
   \end{tabular}
 \end{table}
