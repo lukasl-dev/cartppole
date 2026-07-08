@@ -54,6 +54,7 @@
 \usepackage{amsmath}        % math environments
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
+\usepackage{float}          % force figure placement with [H]
 \usepackage{xcolor}         % colors
 
 \usepackage{tikz}
@@ -288,7 +289,7 @@ marks.\footnote{As in this example.}
 \subsection{Figures}
 
 
-\begin{figure}
+\begin{figure}[H]
   \centering
   \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
   \caption{Sample figure caption. Explain what the figure shows and add a key take-away message to the caption.}
@@ -488,7 +489,7 @@ Reinforcement Learning is an approach to artificial intelligence that works with
 In this loop an agent observes a state from the environment, based on which it chooses its next action. This leads to the environment transitioning into a new state and responding to the agent's action
 with a reward indicating its value.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       node distance=2.5cm,
@@ -516,7 +517,7 @@ Formally, an environment is modeled as a Markov Decision Process (MDP). At each 
 
 CartPole-v1\footnote{Gymnasium: \url{https://gymnasium.farama.org/environments/classic_control/cart_pole/}} models a pole attached to a cart moving along a frictionless track. The goal is to keep the pole balanced by applying a force to the cart, either to the left or to the right.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.3\textwidth]{CartPole.png}
   \caption{The CartPole-v1 environment: a pole attached to a cart moving along a frictionless track.}
@@ -545,7 +546,7 @@ The environment is specified as follows:
 
 PPO\footnote{Schulman et al., \emph{Proximal Policy Optimization Algorithms}, arXiv:1707.06347v2 (2017).} is an on-policy actor--critic method. It alternates between \emph{sampling} with the current policy and \emph{optimizing} a surrogate objective on the collected data. The \textbf{actor} $\pi_\theta(a \mid s)$ chooses actions and is the policy being improved; the \textbf{critic} $V_\phi(s)$ estimates the state value and is used to compute advantages $\hat{A}_t$. Each rollout is reused for several mini-batch epochs, but the clipped objective keeps the new policy close to the one that collected the data.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       scale=0.85,
@@ -637,7 +638,7 @@ A direct estimate compares a discounted rollout return with the critic's current
 \]
 This uses the real rewards from the sampled trajectory segment and \emph{bootstraps} with $V_\phi(s_T)$ because PPO uses fixed-length rollouts that may stop before the episode ends. The unobserved future after $s_T$ is replaced by the critic's estimate; if $s_T$ is terminal, that estimate is $0$. This estimate has low bias but can have high variance.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       state/.style={circle, draw=tuwblue!80, thick, minimum size=0.72cm, font=\scriptsize},
@@ -689,7 +690,7 @@ PPO reuses the same rollout for several gradient steps, so the ratio $r_t(\theta
 \]
 allows updates near the old policy but removes the incentive outside $[1-\epsilon, 1+\epsilon]$, with $\epsilon$ controlling how conservative the update is.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       scale=0.9,
@@ -716,7 +717,7 @@ allows updates near the old policy but removes the incentive outside $[1-\epsilo
 
 PPO alternates between collecting fresh on-policy data and reusing that data for a limited number of optimization steps. The data is \emph{on-policy}: collected with the old policy before the update, and the stored old log-probabilities define the ratio $r_t(\theta)$ during optimization.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       box/.style={rectangle, draw=tuwblue!80, thick, rounded corners,
@@ -747,7 +748,7 @@ PPO alternates between collecting fresh on-policy data and reusing that data for
 
 Instead of one environment, PPO commonly runs $N$ environments in parallel for $T$ steps, giving a batch of $N\cdot T$ transitions per iteration. For each transition PPO stores $s_t, a_t, r_t, \text{done}_t, \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)$, and $V_\phi(s_t)$.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       cell/.style={rectangle, draw=tuwblue!65, rounded corners,
@@ -790,7 +791,7 @@ For the purposes of this paper, the PPO algorithm was implemented using PyTorch\
 
 A single network architecture was tested for both the actor and critic network. Both networks were constructed as MLPs with 2 hidden layers using \(\tanh\) activation functions.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{minipage}{0.45\textwidth}
     \centering
@@ -892,7 +893,7 @@ During each training update, a broader set of metrics was logged to monitor opti
   \item \textbf{Policy statistics} --- policy entropy and the mean and standard deviation of the probability ratio $r_t(\theta)$
 \end{itemize}
 
-\begin{figure}[htbp]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.49\textwidth]{TrainingMetrics1.png}
     \includegraphics[width=0.49\textwidth]{TrainingMetrics2.png}
@@ -969,7 +970,7 @@ Read together, the tables suggest that not all three knobs matter equally. The c
 
 The winning recipe combines conservative clipping, low-variance GAE, and longer rollouts, and solves CartPole-v1 perfectly:
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[
       scale=0.85,
@@ -999,7 +1000,7 @@ The winning recipe combines conservative clipping, low-variance GAE, and longer 
 
 Figure~\ref{fig:sample-efficiency} compares the best GAE run against a Monte-Carlo run on the same configuration otherwise. The GAE run becomes stably solved after about $0.54$M environment steps, while the MC run never reaches the success threshold within the 1M-step budget. This matches the ablation: GAE's lower-variance advantages let the policy improve steadily, whereas the noisier MC estimate hampers learning.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[x=1cm,y=1cm,
     labelbox/.style={rounded corners=2pt, inner sep=4pt, align=center,
@@ -1050,7 +1051,7 @@ Figure~\ref{fig:sample-efficiency} compares the best GAE run against a Monte-Car
 
 Figure~\ref{fig:learning-progress} shows the evaluation return of the selected configuration over the 1M-step training run. Periodic stochastic evaluation oscillates as the policy improves, while the moving average rises steadily. The run first reaches the solved threshold ($475$) at about $0.44$M steps and is consistently solved from $0.54$M steps onward, plateauing at the maximum return of $500$. The final evaluation over 60 episodes gives $500.0 \pm 0.0$ return and a $100\%$ success rate.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[x=1cm,y=1cm]
     \def\plotw{8.8}
@@ -1119,7 +1120,7 @@ Figure~\ref{fig:learning-progress} shows the evaluation return of the selected c
 
 Figure~\ref{fig:loss-curve} plots the total loss over optimizer steps for the selected run. The loss is initially driven by the value term as the critic catches up, then falls and stabilises near zero once the policy consistently solves the environment and the returns carry little surprise. The remaining small oscillations correspond to the on-policy re-collection of fresh rollouts.
 
-\begin{figure}[ht]
+\begin{figure}[H]
   \centering
   \begin{tikzpicture}[x=1cm,y=1cm]
     \def\plotw{11.1}
@@ -1149,7 +1150,7 @@ Figure~\ref{fig:loss-curve} plots the total loss over optimizer steps for the se
 
 All training runs were logged and compared in Aim\footnote{\url{https://github.com/aimhubio/aim}}. Figure~\ref{fig:aim-dashboard} shows the eval-return and loss dashboards across the full sweep. Tracking runs in a central dashboard made it easier to compare ablations, debug suspicious metrics, and select the configurations reported above.
 
-\begin{figure}[htbp]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.49\textwidth]{aim_dashboard_eval.png}
   \hfill
