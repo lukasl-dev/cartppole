@@ -523,24 +523,22 @@ CartPole-v1\footnote{Gymnasium: \url{https://gymnasium.farama.org/environments/c
   \caption{The CartPole-v1 environment: a pole attached to a cart moving along a frictionless track.}
 \end{figure}
 
-The environment is specified as follows:
+The environment specification is compactly summarised below:
 
-\begin{itemize}
-  \item \textbf{Action space} --- \(0\) (push left) or \(1\) (push right)
-  \item \textbf{Observation space}
-  \begin{itemize}
-    \item Cart position \(\in [-4.8, 4.8]\)
-    \item Cart velocity \(\in (-\infty, \infty)\)
-    \item Pole angle \(\in [-24^\circ, 24^\circ]\)
-    \item Pole angular velocity \(\in (-\infty, \infty)\)
-  \end{itemize}
-  \item \textbf{Reward} --- \(1\) per time step while the episode has not terminated
-  \item \textbf{Termination}
-  \begin{itemize}
-    \item Pole angle exceeds \(\pm 12^\circ\)
-    \item Cart leaves the area \([-2.4, 2.4]\)
-  \end{itemize}
-\end{itemize}
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.92}
+\noindent
+\begin{tabular}{@{}p{0.24\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{Action space} & \(0\) push left, \(1\) push right \\
+\textbf{Observation space} & cart position \([-4.8,4.8]\), cart velocity \((-\infty,\infty)\), pole angle \([-24^\circ,24^\circ]\), pole angular velocity \((-\infty,\infty)\) \\
+\textbf{Reward} & \(1\) per non-terminal time step \\
+\textbf{Termination} & pole angle exceeds \(\pm12^\circ\), or cart leaves \([-2.4,2.4]\) \\
+\bottomrule
+\end{tabular}
+\endgroup
 
 \section{Proximal Policy Optimization}
 
