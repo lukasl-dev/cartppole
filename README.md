@@ -50,3 +50,17 @@ Training metrics are tracked with Aim. Start the UI with:
 ```sh
 make aim
 ```
+
+### Plot static figures
+
+Aim is used as the experiment store, and `scripts/plot_results.py` exports
+reproducible static plots from it:
+
+```sh
+make plot
+```
+
+This writes standard ablation and training-curve figures to `plots/`. Use
+`python scripts/plot_results.py --help` for custom metrics, tags, and grouping.
+The command expects an Aim repository from prior training/sweep runs; generate
+one with `make task_ablation_large` or a smaller sweep first.

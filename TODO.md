@@ -11,9 +11,9 @@
     - [ ] Run deterministic/eval episodes without exploration
     - [X] Report average return and success rate
     - [X] Stability: include mean and std across seeds
-- [ ] Plotting
-    - [ ] Plot episode return over training
-    - [ ] Plot mean ± std across seeds
+- [X] Plotting
+    - [X] Plot episode return over training
+    - [X] Plot mean ± std across seeds
 - [x] Ablation studies
     - [x] clip ranges
     - [x] GAE lambdas
