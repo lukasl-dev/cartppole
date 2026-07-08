@@ -14,7 +14,7 @@ TASK_ABLATION_CONFIRM_SEEDS ?= 0,1,2,3,4,5,6,7,8,9
 TASK_ABLATION_CONFIRM_TIMESTEPS ?= 1000000
 TASK_ABLATION_CONFIRM_FLAGS := --seeds $(TASK_ABLATION_CONFIRM_SEEDS) --total-timesteps $(TASK_ABLATION_CONFIRM_TIMESTEPS) --n-eval-episodes $(TASK_ABLATION_EVAL_EPISODES) --success-threshold $(TASK_ABLATION_SUCCESS_THRESHOLD) --learning-rates 0.00025 --value-coefs 0.5 --entropy-coefs 0.01 --normalise-advantages true --policy-losses clipped
 
-.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl sweep sweep_xs sweep_sm sweep_md sweep_lg sweep_xl sweep_xxl ablation ablation_xs ablation_sm ablation_md ablation_lg ablation_xl ablation_xxl task_ablation task_ablation_quick task_ablation_large task_ablation_advantage_confirm evaluate play docs docs/gen docs/open aim
+.PHONY: dumb_game train train_visual train_xs train_sm train_md train_lg train_xl train_xxl sweep sweep_xs sweep_sm sweep_md sweep_lg sweep_xl sweep_xxl ablation ablation_xs ablation_sm ablation_md ablation_lg ablation_xl ablation_xxl task_ablation task_ablation_quick task_ablation_large task_ablation_advantage_confirm evaluate play plot docs docs/gen docs/open aim
 
 dumb_game:
 	python scripts/dumb_game.py
@@ -104,6 +104,9 @@ evaluate:
 
 play:
 	python src/cartppole/play.py $(ARGS)
+
+plot:
+	python scripts/plot_results.py all $(ARGS)
 
 docs: docs/gen docs/open
 
