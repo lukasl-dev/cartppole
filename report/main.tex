@@ -492,14 +492,16 @@ with a reward indicating its value.
 \begin{figure}[H]
   \centering
   \begin{tikzpicture}[
-      node distance=2.5cm,
-      box/.style={rectangle, draw=black!80, thick, minimum width=2.8cm, minimum height=1.2cm, rounded corners},
+      scale=0.72,
+      transform shape,
+      node distance=1.8cm,
+      box/.style={rectangle, draw=black!80, thick, minimum width=2.4cm, minimum height=0.85cm, rounded corners, font=\small},
       arrow/.style={-{Latex[length=2mm]}, thick, black!80}
     ]
     \node[box] (agent) {\textbf{Agent}};
     \node[box, right=of agent] (env) {\textbf{Environment}};
-    \draw[arrow, bend left=40] (agent.north) to node[above] {action} (env.north);
-    \draw[arrow, bend left=40] (env.south) to node[below] {state, reward} (agent.south);
+    \draw[arrow, bend left=35] (agent.north) to node[above, font=\scriptsize] {action} (env.north);
+    \draw[arrow, bend left=35] (env.south) to node[below, font=\scriptsize] {state, reward} (agent.south);
   \end{tikzpicture}
   \caption{The reinforcement learning loop: the agent chooses an action, and the environment responds with a new state and a reward.}
 \end{figure}
@@ -688,26 +690,26 @@ PPO reuses the same rollout for several gradient steps, so the ratio $r_t(\theta
 \]
 allows updates near the old policy but removes the incentive outside $[1-\epsilon, 1+\epsilon]$, with $\epsilon$ controlling how conservative the update is.
 
-\begin{figure}[H]
-  \centering
-  \begin{tikzpicture}[
-      scale=0.9,
-      arrow/.style={-{Latex[length=1.8mm]}, thick, tuwblue!70},
-      tick/.style={thick, tuwblue!70},
-      label/.style={font=\scriptsize}
-    ]
-    \draw[arrow] (0,0) -- (7.0,0) node[right, label] {$r_t$};
-    \draw[tick] (2,0.12) -- (2,-0.12) node[below, label] {$1-\epsilon$};
-    \draw[tick] (3.5,0.12) -- (3.5,-0.12) node[below, label] {$1$};
-    \draw[tick] (5,0.12) -- (5,-0.12) node[below, label] {$1+\epsilon$};
-    \draw[very thick, successgreen!75] (2,0.28) -- (5,0.28);
-    \node[label, successgreen!60!black] at (3.5,0.62) {trusted update region};
-    \node[label, failred] at (1.0,0.28) {too far};
-    \node[label, failred] at (6.0,0.28) {too far};
-  \end{tikzpicture}
-  \caption{The clipped objective only rewards updates whose probability ratio stays within $[1-\epsilon,1+\epsilon]$ of the old policy.}
-  \label{fig:clip-region}
-\end{figure}
+% \begin{figure}[H]
+%   \centering
+%   \begin{tikzpicture}[
+%       scale=0.9,
+%       arrow/.style={-{Latex[length=1.8mm]}, thick, tuwblue!70},
+%       tick/.style={thick, tuwblue!70},
+%       label/.style={font=\scriptsize}
+%     ]
+%     \draw[arrow] (0,0) -- (7.0,0) node[right, label] {$r_t$};
+%     \draw[tick] (2,0.12) -- (2,-0.12) node[below, label] {$1-\epsilon$};
+%     \draw[tick] (3.5,0.12) -- (3.5,-0.12) node[below, label] {$1$};
+%     \draw[tick] (5,0.12) -- (5,-0.12) node[below, label] {$1+\epsilon$};
+%     \draw[very thick, successgreen!75] (2,0.28) -- (5,0.28);
+%     \node[label, successgreen!60!black] at (3.5,0.62) {trusted update region};
+%     \node[label, failred] at (1.0,0.28) {too far};
+%     \node[label, failred] at (6.0,0.28) {too far};
+%   \end{tikzpicture}
+%   \caption{The clipped objective only rewards updates whose probability ratio stays within $[1-\epsilon,1+\epsilon]$ of the old policy.}
+%   \label{fig:clip-region}
+% \end{figure}
 
 \subsection{Training loop}
 
@@ -776,7 +778,7 @@ After rollout collection, the data is converted into supervised-style targets fo
 
 PPO does not update once on the whole rollout. It shuffles the rollout batch, splits it into mini-batches, and performs several passes over the same data. For each epoch and mini-batch, the networks recompute $\log\pi_\theta(a_t\mid s_t)$ and $V_\phi(s_t)$ with the current parameters, form the ratio
 \[
-  r_t(\theta) = \exp\!\bigl(\log\pi_\theta(a_t\mid s_t) - \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)\bigr),
+  r_t(\theta) = \exp\bigl(\log\pi_\theta(a_t\mid s_t) - \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)\bigr),
 \]
 and optimize the policy loss, value loss, and entropy bonus with Adam. Reusing data improves sample efficiency, and clipping makes this reuse safer by limiting policy drift from $\pi_{\theta_{\mathrm{old}}}$. After all updates, $\theta_{\mathrm{old}} \leftarrow \theta$ and a new rollout is collected.
 
@@ -854,7 +856,7 @@ The following parameters were varied across runs:
 
 All other parameters were kept fixed for all runs, using constants found in Table~\ref{tab:fixed-params}.
 
-\begin{table}[ht]
+\begin{table}[H]
   \caption{Fixed hyperparameters used across all sweep runs.}
   \label{tab:fixed-params}
   \centering
@@ -911,60 +913,63 @@ During the evaluation step a smaller set of metrics was collected. These were us
 
 \section{Results}
 
-All results in this section come from the 1M-step sweep described in Section~\ref{sec:methodology}: CartPole-v1, four seeds $(0,1,2,3407)$, 60 evaluation episodes per run, and a success threshold of $475$ return. Each table reports mean $\pm$ standard deviation across the seeds.
+All results in this section come from the 1M-step sweep described in Section~\ref{sec:methodology}: CartPole-v1, four seeds $(0,1,2,3407)$, 60 evaluation episodes per run, and a success threshold of $475$ return. Results report mean $\pm$ standard deviation across the seeds.
 
 \subsection{Ablation study}
 
-We ablate three dimensions independently, fixing the others at the best value found. Table~\ref{tab:ablation-clip} varies the clip range, Table~\ref{tab:ablation-adv} the advantage estimator, and Table~\ref{tab:ablation-rollout} the rollout/update ratio.
+We ablate three dimensions independently, fixing the others at the best value found. Table~\ref{tab:ablation} shows the clip range, advantage-estimator, and rollout/update-ratio ablations side by side.
 
-\begin{table}[ht]
-  \caption{Clip range ablation (best row in bold). $\epsilon=0.2$ gives the best trade-off between return and success rate.}
-  \label{tab:ablation-clip}
+\begin{table}[H]
+  \caption{Ablation results (best row in each block in bold). Return and success are mean $\pm$ standard deviation across seeds.}
+  \label{tab:ablation}
   \centering
-  \begin{tabular}{ccc}
-    \toprule
-    $\epsilon$ & Return & Success \\
-    \midrule
-    $0.1$ & $351.1 \pm 131.2$ & $0.46 \pm 0.42$ \\
-    \textbf{$0.2$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
-    $0.3$ & $334.3 \pm 169.0$ & $0.49 \pm 0.49$ \\
-    \bottomrule
-  \end{tabular}
+  \small
+  \setlength{\tabcolsep}{1.5pt}
+  \renewcommand{\arraystretch}{1.0}
+  \begin{minipage}[t]{0.26\textwidth}
+    \centering
+    \textbf{Clip range}\\[-0.2em]
+    \begin{tabular}{@{}ccc@{}}
+      \toprule
+      $\epsilon$ & Return & Succ. \\
+      \midrule
+      $0.1$ & $351.1{\pm}131.2$ & $.46{\pm}.42$ \\
+      \textbf{$0.2$} & \textbf{$418.1{\pm}133.3$} & \textbf{$.73{\pm}.42$} \\
+      $0.3$ & $334.3{\pm}169.0$ & $.49{\pm}.49$ \\
+      \bottomrule
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.37\textwidth}
+    \centering
+    \textbf{Advantage estimator}\\[-0.2em]
+    \begin{tabular}{@{}lcc@{}}
+      \toprule
+      Estimator & Return & Succ. \\
+      \midrule
+      GAE $.90$ & $421.9{\pm}133.7$ & $.75{\pm}.43$ \\
+      \textbf{GAE $.95$} & \textbf{$418.1{\pm}133.3$} & \textbf{$.73{\pm}.42$} \\
+      GAE $.97$ & $289.4{\pm}117.3$ & $.20{\pm}.35$ \\
+      MC & $348.2{\pm}112.9$ & $.23{\pm}.28$ \\
+      \bottomrule
+    \end{tabular}
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.34\textwidth}
+    \centering
+    \textbf{Rollout/update ratio}\\[-0.2em]
+    \begin{tabular}{@{}ccc@{}}
+      \toprule
+      Ratio & Return & Succ. \\
+      \midrule
+      $64{:}4$ & $146.5{\pm}29.1$ & $.00{\pm}.00$ \\
+      $128{:}4$ & $418.1{\pm}133.3$ & $.73{\pm}.42$ \\
+      \textbf{$256{:}4$} & \textbf{$500.0{\pm}0.0$} & \textbf{$1.00{\pm}.00$} \\
+      $128{:}8$ & $429.4{\pm}55.7$ & $.68{\pm}.25$ \\
+      \bottomrule
+    \end{tabular}
+  \end{minipage}
 \end{table}
 
-\begin{table}[ht]
-  \caption{Advantage estimator ablation at a fixed rollout of $128{:}4$. GAE is more reliable than Monte-Carlo returns in this sweep, and $\lambda=0.95$ performs best.}
-  \label{tab:ablation-adv}
-  \centering
-  \begin{tabular}{ccc}
-    \toprule
-    Estimator & Return & Success \\
-    \midrule
-    GAE $\lambda=0.90$ & $421.9 \pm 133.7$ & $0.75 \pm 0.43$ \\
-    \textbf{GAE $\lambda=0.95$} & \textbf{$418.1 \pm 133.3$} & \textbf{$0.73 \pm 0.42$} \\
-    GAE $\lambda=0.97$ & $289.4 \pm 117.3$ & $0.20 \pm 0.35$ \\
-    MC & $348.2 \pm 112.9$ & $0.23 \pm 0.28$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-\begin{table}[ht]
-  \caption{Rollout/update ratio ablation. Longer rollouts solve CartPole far more reliably; $256{:}4$ reaches the maximum return with zero variance across seeds.}
-  \label{tab:ablation-rollout}
-  \centering
-  \begin{tabular}{ccc}
-    \toprule
-    Steps:epochs & Return & Success \\
-    \midrule
-    $64{:}4$ & $146.5 \pm 29.1$ & $0.00 \pm 0.00$ \\
-    $128{:}4$ & $418.1 \pm 133.3$ & $0.73 \pm 0.42$ \\
-    \textbf{$256{:}4$} & \textbf{$500.0 \pm 0.0$} & \textbf{$1.00 \pm 0.00$} \\
-    $128{:}8$ & $429.4 \pm 55.7$ & $0.68 \pm 0.25$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-
-Read together, the tables suggest that not all three knobs matter equally. The clip range matters least: $\epsilon=0.2$ lands in a stable sweet spot, while $0.1$ and $0.3$ fall off, so the surrogate is sensitive to how much freedom it is given. GAE matters more; once $\lambda$ is tuned to $0.95$ it beats Monte-Carlo returns handily, whereas $0.97$ unravels the run, presumably because the estimate turns noisy enough to destabilise updates. What dominates, though, is the rollout length: $64$-step rollouts never learn, since each update is built from too little trajectory to form a meaningful advantage, whereas $256$ steps solve the environment on every seed. Doubling the epochs at half the length ($128{:}8$) does not rescue the shorter rollout, which says the policy is short on experience, not on gradient steps.
+Read together, the ablations suggest that not all three knobs matter equally. The clip range matters least: $\epsilon=0.2$ lands in a stable sweet spot, while $0.1$ and $0.3$ fall off, so the surrogate is sensitive to how much freedom it is given. GAE matters more; once $\lambda$ is tuned to $0.95$ it beats Monte-Carlo returns handily, whereas $0.97$ unravels the run, presumably because the estimate turns noisy enough to destabilise updates. What dominates, though, is the rollout length: $64$-step rollouts never learn, since each update is built from too little trajectory to form a meaningful advantage, whereas $256$ steps solve the environment on every seed. Doubling the epochs at half the length ($128{:}8$) does not rescue the shorter rollout, which says the policy is short on experience, not on gradient steps.
 
 The winning recipe combines conservative clipping, low-variance GAE, and longer rollouts, and solves CartPole-v1 perfectly:
 
@@ -1000,11 +1005,11 @@ Figure~\ref{fig:sample-efficiency} compares the best GAE run against a Monte-Car
 
 \begin{figure}[H]
   \centering
-  \begin{tikzpicture}[x=1cm,y=1cm,
-    labelbox/.style={rounded corners=2pt, inner sep=4pt, align=center,
-      font=\small},
+  \begin{tikzpicture}[x=1cm,y=1cm, scale=0.82, transform shape,
+    labelbox/.style={rounded corners=2pt, inner sep=3pt, align=center,
+      font=\scriptsize},
     metric/.style={draw=tuwgray!45, fill=tuwgray!5, rounded corners=2pt,
-      inner sep=4pt, align=center, font=\scriptsize}
+      inner sep=3pt, align=center, font=\scriptsize}
   ]
     \def\barw{8.6}
     \def\barh{0.42}
