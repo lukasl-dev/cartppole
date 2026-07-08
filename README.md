@@ -1,66 +1,130 @@
 # cartPPOle
 
-PPO implementation for `CartPole-v1` using Gymnasium and PyTorch.
+PPO for `CartPole-v1` with Gymnasium, PyTorch, and Aim.
 
-## Development
+It provides:
 
-Enter the project environment, then use the `Makefile` targets below.
+- training and evaluation scripts
+- PPO sweeps / ablations
+- Aim logging
+- static plotting from Aim runs
+- report and presentation sources
 
-### Train
+## Setup
 
-```sh
-make train
+```bash
+uv sync
 ```
 
-Smaller/larger training runs:
+## Quick start
 
-```sh
-make train_xs
-make train_sm
-make train_md
-make train_lg
-make train_xl
-make train_xxl
+```bash
+uv run make train
+uv run make evaluate
 ```
 
-Train with rendering enabled:
-
-```sh
-make train_visual
-```
-
-The default checkpoint is saved to:
+Default checkpoint:
 
 ```text
 checkpoints/policy.pt
 ```
 
-### Play a checkpoint
+## Usage
 
-```sh
-make play
+### Train
+
+```bash
+uv run make train
 ```
 
-This loads `checkpoints/policy.pt` and runs one rendered episode.
+Preset sizes:
 
-### Aim UI
-
-Training metrics are tracked with Aim. Start the UI with:
-
-```sh
-make aim
+```bash
+uv run make train_xs
+uv run make train_sm
+uv run make train_md
+uv run make train_lg
+uv run make train_xl
+uv run make train_xxl
 ```
 
-### Plot static figures
+Render while training:
 
-Aim is used as the experiment store, and `scripts/plot_results.py` exports
-reproducible static plots from it:
-
-```sh
-make plot
+```bash
+uv run make train_visual
 ```
 
-This writes standard ablation and training-curve figures to `plots/`. Use
-`python scripts/plot_results.py --help` for custom metrics, tags, and grouping.
-The command expects an Aim repository from prior training/sweep runs; generate
-one with `make task_ablation_large` or a smaller sweep first.
+### Evaluate
+
+```bash
+uv run make evaluate
+```
+
+With args:
+
+```bash
+uv run make evaluate ARGS="--checkpoint-path checkpoints/policy.pt --n-episodes 60"
+```
+
+### Play
+
+```bash
+uv run make play
+```
+
+### Ablations
+
+Quick run:
+
+```bash
+uv run make task_ablation_quick
+```
+
+Full 1M-step run:
+
+```bash
+uv run make task_ablation_large
+```
+
+This runs:
+
+- clip range ablation
+- GAE / Monte-Carlo ablation
+- rollout/update ablation
+
+### Plots
+
+Plots are generated from Aim logs:
+
+```bash
+uv run make plot
+```
+
+Outputs go to `plots/`.
+
+Custom metric example:
+
+```bash
+uv run python scripts/plot_results.py metric \
+  --metric policy/entropy \
+  --tag task-rollout-update-1000000 \
+  --param n_steps=256 \
+  --param update_epochs=4 \
+  --aggregate \
+  --output plots/entropy_selected.png
+```
+
+### Aim
+
+```bash
+uv run make aim
+```
+
+
+## Optional: Nix
+
+```bash
+nix develop --accept-flake-config
+nix run .#check --accept-flake-config
+nix build .#report .#presentation --accept-flake-config
+```
