@@ -42,6 +42,12 @@
 % "preprint" option is used for arXiv or other preprint submissions
  \usepackage[preprint]{neurips_2026}
 
+% Keep the non-anonymous preprint layout, but suppress the NeurIPS
+% first-page notice that would otherwise print "Preprint.".
+\makeatletter
+\renewcommand{\@notice}{}
+\makeatother
+
 % to avoid loading the natbib package, add option nonatbib:
 %    \usepackage[nonatbib]{neurips_2026}
 
