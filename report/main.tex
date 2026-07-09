@@ -1165,6 +1165,10 @@ All training runs were logged and compared in Aim\footnote{\url{https://github.c
   \label{fig:aim-dashboard}
 \end{figure}
 
+\section{Limitations}
+
+The experiments focus on CartPole-v1 and use four training seeds, which is sufficient to compare the tested configurations but not exhaustive. The sweep covers selected PPO hyperparameter values, so future work could expand the search to additional settings. Extending the implementation to harder environments would further test how well these conclusions generalise.
+
 \begin{thebibliography}{2}
 
 \bibitem[Schulman et~al.(2017)Schulman, Wolski, Dhariwal, Radford, and Klimov]{schulman2017ppo}
