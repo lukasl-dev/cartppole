@@ -25,6 +25,13 @@ from cartppole.policy import Policy
 )
 @click.option("--seed", default=0, show_default=True, type=int)
 def play(checkpoint_path: Path, env_id: str = "CartPole-v1", seed: int = 0) -> None:
+    """Render one episode from a saved policy checkpoint.
+
+    Args:
+        checkpoint_path: Path to a checkpoint produced by ``train``.
+        env_id: Gymnasium environment identifier to render.
+        seed: Reset seed for the rendered episode.
+    """
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     env = Environment(id=env_id, n_envs=1, render=True)

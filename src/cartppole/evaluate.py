@@ -11,6 +11,8 @@ from cartppole.policy import Policy
 
 
 class EvaluationResult(NamedTuple):
+    """Episode-return statistics for a saved PPO checkpoint."""
+
     checkpoint_path: Path
     n_episodes: int
     success_threshold: float
@@ -30,6 +32,19 @@ def evaluate(
     seed: int = 0,
     deterministic: bool = False,
 ) -> EvaluationResult:
+    """Evaluate a saved policy checkpoint on fresh episodes.
+
+    Args:
+        env_id: Gymnasium environment identifier.
+        checkpoint_path: Path to a checkpoint produced by ``train``.
+        success_threshold: Episode return counted as a successful episode.
+        n_episodes: Number of episodes to evaluate.
+        seed: Base seed; episode ``i`` uses ``seed + i``.
+        deterministic: Whether to choose greedy actions instead of sampling.
+
+    Returns:
+        Per-episode returns and aggregate evaluation statistics.
+    """
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
     env = Environment(id=env_id, n_envs=1)
@@ -109,6 +124,7 @@ def evaluate_cli(
     seed: int = 0,
     deterministic: bool = False,
 ) -> None:
+    """CLI entry point for evaluating a saved checkpoint."""
     result = evaluate(
         env_id=env_id,
         checkpoint_path=checkpoint_path,

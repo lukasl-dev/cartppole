@@ -24,6 +24,7 @@ from aim import Repo  # noqa: E402
 
 @dataclass(frozen=True)
 class RunSeries:
+    """One Aim metric time series for a single run."""
     run_hash: str
     label: str
     steps: np.ndarray
@@ -32,6 +33,7 @@ class RunSeries:
 
 @dataclass(frozen=True)
 class FinalValue:
+    """Final metric value assigned to a plotting group."""
     run_hash: str
     group: str
     value: float
@@ -49,6 +51,17 @@ def aim_root(path: Path) -> Path:
 
 
 def parse_param_filters(filters: Iterable[str]) -> dict[str, str]:
+    """Parse ``KEY=VALUE`` filters supplied on the command line.
+
+    Args:
+        filters: Raw parameter filter strings.
+
+    Returns:
+        Mapping from run parameter names to expected string values.
+
+    Raises:
+        click.BadParameter: If any filter is not a ``KEY=VALUE`` pair.
+    """
     parsed: dict[str, str] = {}
     for item in filters:
         if "=" not in item:
@@ -61,6 +74,15 @@ def parse_param_filters(filters: Iterable[str]) -> dict[str, str]:
 
 
 def run_param(run: Any, key: str) -> Any:
+    """Read one Aim run parameter defensively.
+
+    Args:
+        run: Aim run object.
+        key: Parameter key.
+
+    Returns:
+        The parameter value, or ``None`` if Aim cannot read it.
+    """
     try:
         return run.get(key)
     except Exception:
@@ -68,6 +90,16 @@ def run_param(run: Any, key: str) -> Any:
 
 
 def run_matches(run: Any, tags: tuple[str, ...], params: dict[str, str]) -> bool:
+    """Return whether an Aim run satisfies tag and parameter filters.
+
+    Args:
+        run: Aim run object.
+        tags: Required Aim tags.
+        params: Required parameter values as strings.
+
+    Returns:
+        ``True`` when all tags and parameter filters match.
+    """
     run_tags = set(run.tags or [])
     if not set(tags).issubset(run_tags):
         return False
@@ -98,16 +130,27 @@ def metric_data(run: Any, metric_name: str) -> tuple[np.ndarray, np.ndarray] | N
 
 
 def short_hash(run_hash: str) -> str:
+    """Return the short display form of an Aim run hash."""
     return run_hash[:8]
 
 
 def value_label(value: Any) -> str:
+    """Format a parameter value for a plot label."""
     if isinstance(value, float):
         return f"{value:g}"
     return str(value)
 
 
 def group_label(run: Any, keys: tuple[str, ...]) -> str:
+    """Build a group label from selected Aim run parameters.
+
+    Args:
+        run: Aim run object.
+        keys: Parameter names to include.
+
+    Returns:
+        A comma-separated label such as ``clip_coef=0.2, seed=0``.
+    """
     parts = []
     for key in keys:
         value = run_param(run, key)
@@ -116,6 +159,15 @@ def group_label(run: Any, keys: tuple[str, ...]) -> str:
 
 
 def run_label(run: Any, label_params: tuple[str, ...]) -> str:
+    """Build a legend label for an Aim run.
+
+    Args:
+        run: Aim run object.
+        label_params: Parameter names to include before the seed and hash.
+
+    Returns:
+        A concise label identifying the run in line plots.
+    """
     params = [group_label(run, label_params)] if label_params else []
     seed = run_param(run, "seed")
     if seed is not None:
@@ -131,6 +183,18 @@ def load_series(
     params: dict[str, str],
     label_params: tuple[str, ...],
 ) -> list[RunSeries]:
+    """Load matching metric time series from an Aim repository.
+
+    Args:
+        repo_path: Project root or ``.aim`` directory.
+        metric_name: Aim metric to load.
+        tags: Required Aim tags.
+        params: Required parameter filters.
+        label_params: Parameters included in run labels.
+
+    Returns:
+        Sorted metric series for matching runs.
+    """
     repo = Repo(str(aim_root(repo_path)))
     series: list[RunSeries] = []
     try:
@@ -162,6 +226,15 @@ def load_series(
 
 
 def common_grid(series: list[RunSeries]) -> np.ndarray:
+    """Choose a shared x-axis grid for aggregating metric series.
+
+    Args:
+        series: Metric series to aggregate.
+
+    Returns:
+        Shared step values when available, otherwise the first run's step
+        grid for interpolation.
+    """
     if not series:
         return np.array([])
 
@@ -178,6 +251,15 @@ def common_grid(series: list[RunSeries]) -> np.ndarray:
 
 
 def smooth_values(values: np.ndarray, window: int) -> np.ndarray:
+    """Apply a centred moving average to a one-dimensional series.
+
+    Args:
+        values: Values to smooth.
+        window: Moving-average window length.
+
+    Returns:
+        Smoothed values, or the original values when the window is inactive.
+    """
     if window <= 1 or len(values) < window:
         return values
     kernel = np.ones(window) / window
@@ -185,6 +267,12 @@ def smooth_values(values: np.ndarray, window: int) -> np.ndarray:
 
 
 def write_metric_csv(path: Path, series: list[RunSeries]) -> None:
+    """Write line-plot source data to CSV.
+
+    Args:
+        path: Output CSV path.
+        series: Metric series to write.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as fh:
         writer = csv.writer(fh)
@@ -195,6 +283,12 @@ def write_metric_csv(path: Path, series: list[RunSeries]) -> None:
 
 
 def write_ablation_csv(path: Path, values: list[FinalValue]) -> None:
+    """Write grouped final-value statistics to CSV.
+
+    Args:
+        path: Output CSV path.
+        values: Final values grouped by plot label.
+    """
     grouped: dict[str, list[float]] = {}
     for item in values:
         grouped.setdefault(item.group, []).append(item.value)
@@ -217,6 +311,7 @@ def write_ablation_csv(path: Path, values: list[FinalValue]) -> None:
 
 
 def default_csv_path(output: Path) -> Path:
+    """Return the default CSV path corresponding to a plot path."""
     return output.with_suffix(".csv")
 
 

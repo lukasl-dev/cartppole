@@ -4,6 +4,12 @@ from torch import Tensor, zeros_like
 
 
 class Advantage(NamedTuple):
+    """Return targets and policy advantages for a rollout.
+
+    ``ret`` contains critic regression targets, while ``adv`` contains the
+    corresponding advantage estimates used by the policy-gradient loss.
+    """
+
     ret: Annotated[Tensor, "n_steps n_envs"]
     adv: Annotated[Tensor, "n_steps n_envs"]
 

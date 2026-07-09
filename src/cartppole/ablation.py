@@ -12,6 +12,13 @@ from cartppole.train import Metric, PolicyLoss, train
 
 @dataclass(frozen=True)
 class AblationConfig:
+    """Configuration switches that define one PPO ablation variant.
+
+    The baseline configuration is copied and selectively modified to isolate
+    the effect of one PPO component, such as GAE, entropy regularisation,
+    value learning, clipping, or advantage normalisation.
+    """
+
     advantage_estimator: str
     normalise_advantages: bool
     policy_loss: str
@@ -20,6 +27,13 @@ class AblationConfig:
 
 
 class AblationResult(NamedTuple):
+    """Evaluation summary for one trained ablation run.
+
+    Each result records the ablated configuration, the training seed, and
+    the post-training evaluation statistics needed for per-run and
+    across-seed reporting.
+    """
+
     run_hash: str
     variant: str
     seed: int
@@ -48,6 +62,19 @@ def parse_variants(
     param: click.Parameter,
     value: str,
 ) -> list[str]:
+    """Parse and validate a comma-separated list of ablation variants.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated variant names.
+
+    Returns:
+        The validated variant names in the order requested by the user.
+
+    Raises:
+        click.BadParameter: If the list is empty or contains unknown names.
+    """
     variants = [part.strip() for part in value.split(",") if part.strip()]
     if not variants:
         raise click.BadParameter("expected a comma-separated list", param=param)
@@ -63,6 +90,19 @@ def parse_variants(
 
 
 def config_for_variant(variant: str, baseline: AblationConfig) -> AblationConfig:
+    """Return the PPO configuration for an ablation variant.
+
+    Args:
+        variant: Name of the ablation variant to apply.
+        baseline: Reference configuration from which variants are derived.
+
+    Returns:
+        The baseline configuration or a modified copy for the requested
+        ablation.
+
+    Raises:
+        ValueError: If ``variant`` is not recognised.
+    """
     match variant:
         case "baseline":
             return baseline
@@ -85,18 +125,38 @@ def checkpoint_for_ablation(
     variant: str,
     seed: int,
 ) -> Path:
+    """Build the checkpoint path for one ablation run.
+
+    Args:
+        checkpoint_path: Base checkpoint path supplied by the CLI.
+        variant: Ablation variant name.
+        seed: Training seed.
+
+    Returns:
+        A path with the variant and seed encoded in the file name.
+    """
     return checkpoint_path.with_name(
         f"{checkpoint_path.stem}_{variant}_seed-{seed}{checkpoint_path.suffix}"
     )
 
 
 def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
+    """Render rows as a simple left-aligned Markdown table.
+
+    Args:
+        headers: Column headers.
+        rows: Table body rows, already converted to strings.
+
+    Returns:
+        A Markdown table suitable for terminal output or copying into notes.
+    """
     widths = [
         max(len(row[column]) for row in [headers, *rows])
         for column in range(len(headers))
     ]
 
     def format_row(row: list[str]) -> str:
+        """Format one row using the precomputed column widths."""
         return (
             "| "
             + " | ".join(
@@ -110,6 +170,14 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
 
 
 def runs_table(results: list[AblationResult]) -> str:
+    """Render one table row per ablation run.
+
+    Args:
+        results: Per-run ablation results.
+
+    Returns:
+        A Markdown table containing configuration and evaluation statistics.
+    """
     return markdown_table(
         headers=[
             "run",
@@ -142,6 +210,14 @@ def runs_table(results: list[AblationResult]) -> str:
 
 
 def summary_table(results: list[AblationResult]) -> str:
+    """Summarise ablation performance across seeds.
+
+    Args:
+        results: Per-run ablation results.
+
+    Returns:
+        A Markdown table with mean and standard deviation by variant.
+    """
     rows: list[list[str]] = []
     variants = list(dict.fromkeys(result.variant for result in results))
 
@@ -280,6 +356,15 @@ def ablation(
     policy_loss: str = PolicyLoss.clipped,
     gae_lambda: float = 0.95,
 ) -> list[AblationResult]:
+    """Train and evaluate PPO ablation variants.
+
+    The command starts from a baseline PPO configuration, applies each
+    requested variant, trains one policy per variant and seed, evaluates the
+    saved checkpoint, logs metrics to Aim, and prints Markdown summaries.
+
+    Returns:
+        A list of per-run ablation results.
+    """
     seeds = seeds or [0, 1, 2, 3407]
     variants = variants or sorted(VARIANTS)
     baseline = AblationConfig(

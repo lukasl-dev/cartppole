@@ -10,6 +10,8 @@ from cartppole.train import Metric, PolicyLoss, train
 
 
 class SweepResult(NamedTuple):
+    """Configuration and evaluation statistics for one sweep run."""
+
     run_hash: str
     seed: int
     clip_coef: float
@@ -32,6 +34,19 @@ class SweepResult(NamedTuple):
 def parse_float_list(
     _: click.Context, param: click.Parameter, value: str
 ) -> list[float]:
+    """Parse a comma-separated Click option as floats.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated float values.
+
+    Returns:
+        Parsed floating-point values.
+
+    Raises:
+        click.BadParameter: If parsing fails or the list is empty.
+    """
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
         raise click.BadParameter("expected a comma-separated list", param=param)
@@ -44,6 +59,19 @@ def parse_float_list(
 
 
 def parse_int_list(_: click.Context, param: click.Parameter, value: str) -> list[int]:
+    """Parse a comma-separated Click option as integers.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated integer values.
+
+    Returns:
+        Parsed integer values.
+
+    Raises:
+        click.BadParameter: If parsing fails or the list is empty.
+    """
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
         raise click.BadParameter("expected a comma-separated list", param=param)
@@ -56,6 +84,11 @@ def parse_int_list(_: click.Context, param: click.Parameter, value: str) -> list
 
 
 def parse_bool_list(_: click.Context, param: click.Parameter, value: str) -> list[bool]:
+    """Parse a comma-separated Click option as booleans.
+
+    Accepted truthy values are ``true``, ``t``, ``1``, ``yes``, and ``y``.
+    Accepted falsey values are ``false``, ``f``, ``0``, ``no``, and ``n``.
+    """
     values = [part.strip().lower() for part in value.split(",") if part.strip()]
     if not values:
         raise click.BadParameter("expected a comma-separated list", param=param)
@@ -81,6 +114,16 @@ def parse_advantage_estimators(
     param: click.Parameter,
     value: str,
 ) -> list[str]:
+    """Parse advantage-estimator choices for a sweep.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated estimator names.
+
+    Returns:
+        A validated list containing ``gae`` and/or ``mc``.
+    """
     choices = {"gae", "mc"}
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
@@ -101,6 +144,16 @@ def parse_policy_losses(
     param: click.Parameter,
     value: str,
 ) -> list[str]:
+    """Parse PPO policy-loss choices for a sweep.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated loss names.
+
+    Returns:
+        A validated list of ``PolicyLoss`` string values.
+    """
     choices = {loss.value for loss in PolicyLoss}
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
@@ -121,6 +174,16 @@ def parse_rollout_update_ratios(
     param: click.Parameter,
     value: str,
 ) -> list[tuple[int, int]]:
+    """Parse ``N_STEPS:UPDATE_EPOCHS`` rollout/update pairs.
+
+    Args:
+        _: Click context supplied by the option callback.
+        param: Click option being parsed, used for error messages.
+        value: Comma-separated rollout/update pairs.
+
+    Returns:
+        Positive ``(n_steps, update_epochs)`` pairs.
+    """
     ratios: list[tuple[int, int]] = []
 
     for item in [part.strip() for part in value.split(",") if part.strip()]:
@@ -158,7 +221,29 @@ def checkpoint_for_sweep(
     n_steps: int,
     update_epochs: int,
 ) -> Path:
+    """Build a checkpoint path that encodes sweep hyperparameters.
+
+    Args:
+        checkpoint_path: Base checkpoint path supplied by the CLI.
+        seed: Training seed.
+        clip_coef: PPO clip coefficient.
+        learning_rate: Adam learning rate.
+        value_coef: Value-loss coefficient.
+        entropy_coef: Entropy-bonus coefficient.
+        advantage_estimator: Advantage estimator name.
+        normalise_advantages: Whether advantages are normalised.
+        policy_loss: Policy-loss variant.
+        gae_lambda: GAE lambda value.
+        discount_factor: Reward discount factor.
+        n_steps: Rollout length per environment.
+        update_epochs: PPO epochs per rollout.
+
+    Returns:
+        A checkpoint path with a deterministic hyperparameter suffix.
+    """
+
     def format_value(value: float | int) -> str:
+        """Make numeric values safe for checkpoint file names."""
         return str(value).replace(".", "p")
 
     suffix = (
@@ -181,12 +266,22 @@ def checkpoint_for_sweep(
 
 
 def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
+    """Render rows as a simple left-aligned Markdown table.
+
+    Args:
+        headers: Column headers.
+        rows: Table body rows, already converted to strings.
+
+    Returns:
+        A Markdown table suitable for terminal output or copying into notes.
+    """
     widths = [
         max(len(row[column]) for row in [headers, *rows])
         for column in range(len(headers))
     ]
 
     def format_row(row: list[str]) -> str:
+        """Format one row using the precomputed column widths."""
         return (
             "| "
             + " | ".join(
@@ -200,6 +295,14 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
 
 
 def runs_table(results: list[SweepResult]) -> str:
+    """Render one table row per sweep run.
+
+    Args:
+        results: Per-run sweep results.
+
+    Returns:
+        A Markdown table containing configuration and evaluation statistics.
+    """
     headers = [
         "run",
         "seed",
@@ -241,6 +344,14 @@ def runs_table(results: list[SweepResult]) -> str:
 
 
 def summary_table(results: list[SweepResult]) -> str:
+    """Summarise sweep performance across seeds and hyperparameters.
+
+    Args:
+        results: Per-run sweep results.
+
+    Returns:
+        A Markdown table with grouped mean and standard deviation values.
+    """
     grouped: dict[
         tuple[float, float, float, float, str, bool, str, float, float, int, int],
         list[SweepResult],
@@ -462,6 +573,16 @@ def sweep(
     gae_lambdas: list[float] | None = None,
     rollout_update_ratios: list[tuple[int, int]] | None = None,
 ) -> list[SweepResult]:
+    """Train and evaluate a grid of PPO hyperparameter settings.
+
+    The command forms the Cartesian product of requested seeds and
+    hyperparameter lists, trains one checkpoint for each experiment,
+    evaluates the checkpoint, logs summary metrics to Aim, and prints
+    Markdown tables of the results.
+
+    Returns:
+        A list of per-run sweep results.
+    """
     seeds = seeds or [0]
     clip_coefs = clip_coefs or [0.1, 0.2, 0.3]
     learning_rates = learning_rates or [2.5e-4]
@@ -510,8 +631,12 @@ def sweep(
             discount_factors,
             rollout_update_ratios,
         )
-        for clip_coef in (clip_coefs if policy_loss == PolicyLoss.clipped else [clip_coefs[0]])
-        for gae_lambda in (gae_lambdas if advantage_estimator == "gae" else [gae_lambdas[0]])
+        for clip_coef in (
+            clip_coefs if policy_loss == PolicyLoss.clipped else [clip_coefs[0]]
+        )
+        for gae_lambda in (
+            gae_lambdas if advantage_estimator == "gae" else [gae_lambdas[0]]
+        )
     ]
 
     for index, (

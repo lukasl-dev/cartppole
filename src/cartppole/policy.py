@@ -6,6 +6,13 @@ from torch.nn import Linear, Module, Sequential, Tanh
 
 
 class PolicyOutput(NamedTuple):
+    """Actor and critic quantities produced by the policy network.
+
+    PPO stores sampled actions and old log-probabilities during rollout
+    collection, then recomputes log-probabilities, entropy, and values during
+    policy updates.
+    """
+
     action: Annotated[Tensor, "batch_size"]
     log_prob: Annotated[Tensor, "batch_size"]
     entropy: Annotated[Tensor, "batch_size"]
@@ -30,6 +37,13 @@ class Policy(Module):
     """
 
     def __init__(self, obs_dim: int, act_dim: int, hidden_dim: int = 64) -> None:
+        """Initialise separate actor and critic multilayer perceptrons.
+
+        Args:
+            obs_dim: Number of observation features.
+            act_dim: Number of discrete actions.
+            hidden_dim: Width of each hidden layer.
+        """
         super().__init__()
         self._actor = Sequential(
             Linear(obs_dim, hidden_dim),

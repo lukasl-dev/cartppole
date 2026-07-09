@@ -20,6 +20,8 @@ from cartppole.advantages import (
 
 
 class Metric(StrEnum):
+    """Aim metric names emitted by training, evaluation, and sweeps."""
+
     episode_return_mean = "episode/return_mean"
     episode_length_mean = "episode/length_mean"
     episode_success_rate = "episode/success_rate"
@@ -40,11 +42,18 @@ class Metric(StrEnum):
 
 
 class PolicyLoss(StrEnum):
+    """Supported PPO policy-loss formulations."""
+
     clipped = "clipped"
     unclipped = "unclipped"
 
 
 def git_commit_hash() -> str | None:
+    """Return the current repository commit hash when available.
+
+    Returns:
+        The Git ``HEAD`` hash, or ``None`` if Git metadata cannot be read.
+    """
     try:
         return subprocess.check_output(
             ["git", "rev-parse", "HEAD"],
@@ -57,6 +66,13 @@ def git_commit_hash() -> str | None:
 
 
 class Rollout(NamedTuple):
+    """Tensors collected from one fixed-length PPO rollout.
+
+    Fields are stored with leading ``n_steps`` and ``n_envs`` dimensions so
+    that advantage estimation can preserve episode boundaries before the data
+    is flattened into PPO mini-batches.
+    """
+
     obs: Annotated[Tensor, "n_steps n_envs obs_dim"]
     act: Annotated[Tensor, "n_steps n_envs"]
     log_prob: Annotated[Tensor, "n_steps n_envs"]
@@ -73,6 +89,18 @@ def rollout(
     env: Environment,
     policy: Policy,
 ) -> Rollout:
+    """Collect one fixed-length rollout from the current policy.
+
+    Args:
+        seed: Reset seed for the rollout's initial observation.
+        n_steps: Number of environment steps to collect.
+        env: Environment wrapper used for stepping.
+        policy: Policy used to sample actions and estimate values.
+
+    Returns:
+        Batched observations, actions, rewards, done flags, log-probabilities,
+        value estimates, and bootstrap information.
+    """
     reset = env.reset(seed=seed)
     next_obs: Annotated[Tensor, "n_envs obs_dim"] = tensor(
         reset.obs,
@@ -134,6 +162,16 @@ def collect_completed_episodes(
     current_ep_return: Annotated[Tensor, "n_envs"],
     current_ep_length: Annotated[Tensor, "n_envs"],
 ) -> tuple[list[float], list[int]]:
+    """Extract completed episode returns and lengths from a rollout.
+
+    Args:
+        roll: Rollout containing rewards and done flags.
+        current_ep_return: Running episode return for each environment.
+        current_ep_length: Running episode length for each environment.
+
+    Returns:
+        Lists of returns and lengths for episodes that ended in the rollout.
+    """
     n_steps = roll.rew.shape[0]
     episode_returns: list[float] = []
     episode_lengths: list[int] = []
@@ -341,6 +379,17 @@ def train(
     eval_seed: int = 10_000,
     deterministic_eval: bool = False,
 ) -> Run:
+    """Train an actor-critic policy with PPO.
+
+    The training loop collects vectorised rollouts, computes advantages with
+    GAE or Monte Carlo returns, performs multiple mini-batch PPO epochs, logs
+    metrics to Aim, optionally evaluates during training, and saves a final
+    checkpoint.
+
+    Returns:
+        The open Aim run associated with the training job. Callers that add
+        extra metadata should close it when finished.
+    """
     params = locals().copy()
 
     run = Run()
@@ -678,6 +727,7 @@ def train_cli(
     eval_seed: int = 10_000,
     deterministic_eval: bool = False,
 ) -> Run:
+    """CLI entry point for PPO training."""
     return train(
         env_id=env_id,
         seed=seed,
