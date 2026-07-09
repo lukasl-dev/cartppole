@@ -17,9 +17,9 @@
 - [x] Ablation studies
     - [x] clip ranges
     - [x] GAE lambdas
-- [ ] Sensitivity to seeds
-    - [ ] Train with multiple seeds
-    - [ ] Report mean ± std
-- [ ] Report / presentation
-    - [ ] Describe PPO objective and implementation choices
-    - [ ] Include training curves and evaluation table
+- [j] Sensitivity to seeds
+    - [x] Train with multiple seeds
+    - [x] Report mean ± std
+- [x] Report / presentation
+    - [x] Describe PPO objective and implementation choices
+    - [x] Include training curves and evaluation table
